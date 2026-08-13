@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Sekka.BLL/Sekka.BLL.csproj" />
+  <Project Path="Sekka.DAL/Sekka.DAL.csproj" />
+  <Project Path="Sekka.PL/Sekka.PL.csproj" />
+</Solution>

@@ -1,0 +1,197 @@
+﻿@model DriverDetailsVM
+
+@{
+    ViewData["Title"] = "Driver Details";
+}
+
+<div class="container mt-4">
+
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-primary">Driver Details</h2>
+            <p class="text-muted mb-0">
+                View driver and car information
+            </p>
+        </div>
+
+        <a asp-controller="Driver"
+               asp-action="Index"
+               class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>
+            Back to Drivers
+        </a>
+    </div>
+
+
+    <div class="row g-4">
+
+       
+        <div class="col-12 col-lg-6">
+
+            <div class="card shadow-sm h-100">
+
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person me-2"></i>
+                        Driver Information
+                    </h5>
+                </div>
+
+                <div class="card-body">
+
+                    
+                    <div class="text-center mb-4">
+
+                        @if (string.IsNullOrWhiteSpace(Model.ProfilePicture))
+                        {
+                            <img src="~/images/User.png.jpg"
+                                 alt="Default Avatar"
+                                 class="rounded-circle"
+                                 style="width: 180px;
+                            height: 180px;
+                            object-fit: cover;" />
+                        }
+                        else
+                        {
+                            <img src="@Url.Action("Picture", "Driver", new { id = Model.Id })"
+                                 alt="@Model.FullName"
+                                 class="rounded-circle"
+                                 style="width: 180px;
+                            height: 180px;
+                            object-fit: cover;" />
+                        }
+
+                    </div>
+
+
+                   
+
+                    <div class="mb-3">
+                        <strong>Full Name:</strong>
+                        <span>@Model.FullName</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Email:</strong>
+                        <span>@Model.Email</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Phone:</strong>
+                        <span>@Model.PhoneNumber</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Address:</strong>
+                        <span>@Model.Address</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>License Number:</strong>
+                        <span>@Model.LicenseNumber</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Rating:</strong>
+                        <span>
+                            @Model.RatingAverage
+                        </span>
+                    </div>
+
+                    <div class="mb-0">
+                        <strong>Status:</strong>
+
+                        @if (Model.IsAvailable)
+                        {
+                            <span class="badge bg-success">
+                                Available
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">
+                                Not Available
+                            </span>
+                        }
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+     
+        <div class="col-12 col-lg-6">
+
+            <div class="card shadow-sm h-100">
+
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-car-front me-2"></i>
+                        Car Information
+                    </h5>
+                </div>
+
+                <div class="card-body">
+
+                   
+                    <div class="text-center mb-4">
+
+                        @if (string.IsNullOrWhiteSpace(Model.CarImage))
+                        {
+                            <div class="d-flex justify-content-center align-items-center bg-light rounded"
+                                 style="height: 250px;">
+
+                                <span class="text-muted">
+                                    No Car Image
+                                </span>
+
+                            </div>
+                        }
+                        else
+                        {
+                            <img src="@Url.Action("CarPicture", "Driver", new { id = Model.Id })"
+                                 alt="@Model.CarModel"
+                                 class="img-fluid rounded"
+                                 style="height: 250px;
+                            width: 100%;
+                            object-fit: cover;" />
+                        }
+
+                    </div>
+
+
+                  
+
+                    <div class="mb-3">
+                        <strong>Model:</strong>
+                        <span>@Model.CarModel</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Color:</strong>
+                        <span>@Model.CarColor</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Plate Number:</strong>
+                        <span>@Model.PlateNumber</span>
+                    </div>
+
+                    <div class="mb-0">
+                        <strong>License Plate:</strong>
+                        <span>@Model.LicensePlate</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>

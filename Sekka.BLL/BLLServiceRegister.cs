@@ -1,0 +1,24 @@
+﻿using Microsoft.Extensions.DependencyInjection;
+using Sekka.BLL.Classes;
+using Sekka.BLL.Interfaces;
+using Sekka.BLL.Profiles;
+
+namespace Sekka.BLL
+{
+    public static class BLLServiceRegister
+    {
+
+        public static IServiceCollection AddBLLServices(this IServiceCollection services)
+        {
+
+            services.AddScoped<IAccountService, AccountService>();
+            services.AddScoped<IDriverService, DriverService>();
+            services.AddScoped<IAttachmentService, AttachmentService>();
+            services.AddScoped<IAdminService, AdminService>();
+            services.AddAutoMapper(typeof(DriverProfile));
+
+            return services;
+        }
+
+    }
+}

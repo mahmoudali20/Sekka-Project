@@ -1,0 +1,265 @@
+﻿
+@model CreateDriverVM
+
+@{
+    ViewData["Title"] = "Create Driver";
+}
+
+<div class="container">
+    <main role="main" class="pb-3">
+
+        <header class="mb-4">
+            <h3 class="text-primary">Create Driver</h3>
+        </header>
+
+        <form asp-action="Create"
+              method="post"
+              enctype="multipart/form-data">
+
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+          
+
+            <ul class="nav nav-tabs mb-4" id="createDriverTabs" role="tablist">
+
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active"
+                            id="driver-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#driver-info"
+                            type="button"
+                            role="tab">
+                        Driver Information
+                    </button>
+                </li>
+
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link"
+                            id="car-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#car-info"
+                            type="button"
+                            role="tab">
+                        Car Information
+                    </button>
+                </li>
+
+            </ul>
+
+
+        
+
+            <div class="tab-content">
+
+          
+
+                <div class="tab-pane fade show active"
+                     id="driver-info"
+                     role="tabpanel"
+                     aria-labelledby="driver-tab">
+
+                    <div class="section-header mb-3">
+                        <h5 class="text-primary fw-bold">
+                            Driver Information
+                        </h5>
+                        <hr class="mt-2">
+                    </div>
+
+                    <div class="row g-3">
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="FullName" class="form-label"></label>
+                            <input asp-for="FullName" class="form-control" />
+                            <span asp-validation-for="FullName"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="UserName" class="form-label"></label>
+                            <input asp-for="UserName" class="form-control" />
+                            <span asp-validation-for="UserName"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" />
+                            <span asp-validation-for="Email"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="PhoneNumber" class="form-label"></label>
+                            <input asp-for="PhoneNumber" class="form-control" />
+                            <span asp-validation-for="PhoneNumber"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Address" class="form-label"></label>
+                            <input asp-for="Address" class="form-control" />
+                            <span asp-validation-for="Address"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="LicenseNumber" class="form-label"></label>
+                            <input asp-for="LicenseNumber" class="form-control" />
+                            <span asp-validation-for="LicenseNumber"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Password" class="form-label"></label>
+                            <input asp-for="Password"
+                                   type="password"
+                                   class="form-control" />
+                            <span asp-validation-for="Password"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="ConfirmPassword"
+                                   class="form-label"></label>
+
+                            <input asp-for="ConfirmPassword"
+                                   type="password"
+                                   class="form-control" />
+
+                            <span asp-validation-for="ConfirmPassword"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+
+                            <label asp-for="ProfilePicture"
+                                   class="form-label">
+                                Profile Picture
+                            </label>
+
+                            <input asp-for="ProfilePicture"
+                                   type="file"
+                                   class="form-control"
+                                   accept="image/*" />
+
+                            <span asp-validation-for="ProfilePicture"
+                                  class="text-danger"></span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+          
+
+                <div class="tab-pane fade"
+                     id="car-info"
+                     role="tabpanel"
+                     aria-labelledby="car-tab">
+
+                    <div class="section-header mb-3">
+                        <h5 class="text-primary fw-bold">
+                            Car Information
+                        </h5>
+                        <hr class="mt-2">
+                    </div>
+
+                    <div class="row g-3">
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Car.Model"
+                                   class="form-label"></label>
+
+                            <input asp-for="Car.Model"
+                                   class="form-control" />
+
+                            <span asp-validation-for="Car.Model"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Car.Color"
+                                   class="form-label"></label>
+
+                            <input asp-for="Car.Color"
+                                   class="form-control" />
+
+                            <span asp-validation-for="Car.Color"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Car.PlateNumber"
+                                   class="form-label"></label>
+
+                            <input asp-for="Car.PlateNumber"
+                                   class="form-control" />
+
+                            <span asp-validation-for="Car.PlateNumber"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Car.LicensePlate"
+                                   class="form-label"></label>
+
+                            <input asp-for="Car.LicensePlate"
+                                   class="form-control" />
+
+                            <span asp-validation-for="Car.LicensePlate"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+
+                            <label asp-for="Car.ProfilePicture"
+                                   class="form-label">
+                                Profile Picture
+                            </label>
+
+                            <input asp-for="Car.ProfilePicture"
+                                   type="file"
+                                   class="form-control"
+                                   accept="image/*" />
+
+                            <span asp-validation-for="Car.ProfilePicture"
+                                  class="text-danger"></span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <footer class="d-flex justify-content-end gap-3 mt-4">
+
+                <a asp-action="Index"
+                       class="btn btn-outline-secondary px-4">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Back to List
+                </a>
+
+                <button type="submit"
+                        class="btn btn-primary px-4">
+
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Create Driver
+
+                </button>
+
+            </footer>
+
+        </form>
+
+    </main>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

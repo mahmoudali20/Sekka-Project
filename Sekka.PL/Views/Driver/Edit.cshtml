@@ -1,0 +1,86 @@
+﻿@model DriverEditVM
+
+@{
+    ViewData["Title"] = "Edit Driver";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Edit Driver Details</h4>
+                </div>
+                <div class="card-body">
+
+                 
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @TempData["ErrorMessage"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <form asp-action="Edit" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                        
+                    
+                        <input type="hidden" name="id" value="@Context.GetRouteValue("id")" />
+
+                      
+                        <h5 class="text-secondary border-bottom pb-2 mb-3">Account Information</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="UserName" class="form-label">Username</label>
+                                <input asp-for="UserName" class="form-control" placeholder="Enter username" />
+                                <span asp-validation-for="UserName" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Email" class="form-label">Email Address</label>
+                                <input asp-for="Email" type="email" class="form-control" placeholder="example@domain.com" />
+                                <span asp-validation-for="Email" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="PhoneNumber" class="form-label">Phone Number</label>
+                                <input asp-for="PhoneNumber" type="tel" class="form-control" placeholder="Enter phone number" />
+                                <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Address" class="form-label">Address</label>
+                                <input asp-for="Address" class="form-control" placeholder="Enter current address" />
+                                <span asp-validation-for="Address" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                     
+                        <h5 class="text-secondary border-bottom pb-2 mb-3 mt-4">Professional Information</h5>
+                        
+                        <div class="mb-4">
+                            <label asp-for="LicenseNumber" class="form-label">License Number</label>
+                            <input asp-for="LicenseNumber" class="form-control" placeholder="Enter license number" />
+                            <span asp-validation-for="LicenseNumber" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between border-top pt-3">
+                            <button type="submit" class="btn btn-success px-4">Save Changes</button>
+                            <a asp-action="Index" class="btn btn-secondary px-4">Cancel</a>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+  
+    <partial name="_ValidationScriptsPartial" />
+}

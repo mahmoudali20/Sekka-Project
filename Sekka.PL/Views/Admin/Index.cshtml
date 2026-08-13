@@ -1,0 +1,98 @@
+﻿@model IEnumerable<AdminVM>
+
+@{
+    ViewData["Title"] = "Admins List";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Admins Management</h2>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Add New Admin
+        </a>
+    </div>
+
+  
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show auto-dismiss-alert" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show auto-dismiss-alert" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover table-striped align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Full Name</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Phone Number</th>
+                        <th>Address</th>
+                        <th class="text-center" style="width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var admin in Model)
+                        {
+                            <tr>
+                                <td>@admin.FullName</td>
+                                <td>@admin.UserName</td>
+                                <td>@admin.Email</td>
+                                <td>@(string.IsNullOrEmpty(admin.PhoneNumber) ? "N/A" : admin.PhoneNumber)</td>
+                                <td>@(string.IsNullOrEmpty(admin.Address) ? "N/A" : admin.Address)</td>
+                                <td class="text-center">
+                                 
+                                    <form asp-action="Delete" asp-route-id="@admin.Id" method="post"
+                                          onsubmit="return confirm('Are you sure you want to delete this Admin (@admin.FullName)?');"
+                                          style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                No admins found. Click "Add New Admin" to create one.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.auto-dismiss-alert');
+            alerts.forEach(alert => {
+             
+                alert.classList.remove('show');
+                
+               
+                setTimeout(() => alert.remove(), 300);
+            });
+        }, 3000);
+    </script>
+}
