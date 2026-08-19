@@ -20,7 +20,8 @@ namespace Sekka.DAL.Context
 
         public DbSet<Driver> Drivers { get; set; }
         public DbSet<Car> Cars { get; set; }
+		public DbSet<Complaint> Complaints { get; set; }
 
 
-    }
+	}
 }
