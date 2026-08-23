@@ -27,18 +27,30 @@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
 
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark fw-bold text-primary" asp-area="" asp-controller="Trips" asp-action="Index">Trips Dashboard</a>
+                            </li>
+
+                            @if (User.IsInRole("Passenger"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark fw-bold text-success" asp-area="" asp-controller="Trips" asp-action="Book">Book Ride</a>
+                                </li>
+                            }
+                        }
+
                         @if (User.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
                         {
-                                
                             <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Driver" asp-action="Index">AllDrivers</a>
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Driver" asp-action="Index">AllDrivers</a>
                             </li>
                         }
                         @if (User.Identity?.IsAuthenticated == true && User.IsInRole("SuperAdmin"))
                         {
-                                
                             <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Admin" asp-action="Index">ManageAdmins</a>
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Admin" asp-action="Index">ManageAdmins</a>
                             </li>
                         }
                     </ul>
