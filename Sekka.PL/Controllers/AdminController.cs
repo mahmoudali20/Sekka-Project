@@ -20,7 +20,12 @@ namespace Sekka.PL.Controllers
         public async Task<IActionResult> Index()
         {
             var admins = await _adminService.GetAdminsAsync();
-            return View(admins);
+            if (!admins.success)
+            {
+                TempData["ErrorMessage"] = admins.error;
+                return View(Enumerable.Empty<AdminVM>());
+            }
+            return View(admins.Value);
         }
 
         [HttpGet]

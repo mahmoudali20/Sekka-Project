@@ -1,19 +1,16 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Sekka.BLL.Common;
+﻿using Sekka.BLL.Common;
 using Sekka.BLL.Interfaces;
 using Sekka.BLL.ViewModels.AccountVM;
-using Sekka.DAL.Models;
 
 namespace Sekka.BLL.Classes
 {
     public class AdminService : IAdminService
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IAccountService _accountService;
 
-        public AdminService(UserManager<ApplicationUser> userManager, IAccountService account)
+        private readonly IAccountService _accountService;
+        public AdminService(IAccountService account)
         {
-            _userManager = userManager;
+
             _accountService = account;
         }
 
@@ -21,33 +18,22 @@ namespace Sekka.BLL.Classes
         public async Task<Result> RegisterAdminAsync(CreateAdminVM model)
         {
             var emailExist = await _accountService.FindByEmailAsync(model.Email);
-            if (emailExist is not null)
+            if (emailExist.success)
                 return Result.Validation("Email already exists.");
 
             var usernameExist = await _accountService.FindByUserNameAsync(model.UserName);
-            if (usernameExist is not null)
+            if (usernameExist.success)
                 return Result.Validation("Username already exists.");
 
             var phoneExist = await _accountService.IsPhoneNumberExistAsync(model.PhoneNumber, string.Empty);
             if (phoneExist)
                 return Result.Validation("Phone number already exists.");
 
-            var user = new ApplicationUser
-            {
-                UserName = model.UserName,
-                FullName = model.FullName,
-                Email = model.Email,
-                PhoneNumber = model.PhoneNumber,
-                Address = model.Address,
+            var userResult = await _accountService.CreateUserAsync(model.UserName, model.FullName, model.Email, model.PhoneNumber, model.Address, model.Password);
+            if (!userResult.success)
+                return Result.Fail("Failed to create Admin");
 
-            };
-
-            var result = await _userManager.CreateAsync(user, model.Password);
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                return Result.Fail(errors);
-            }
+            var user = userResult.Value;
 
 
             await _accountService.AddRoleAsync(user, "Admin");
@@ -56,13 +42,15 @@ namespace Sekka.BLL.Classes
         }
 
 
-        public async Task<IEnumerable<AdminVM>> GetAdminsAsync()
+        public async Task<Result<IEnumerable<AdminVM>>> GetAdminsAsync()
         {
+            var result = await _accountService.GetUsersInRoleAsync("Admin");
 
-            var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+            if (!result.success)
+                return Result<IEnumerable<AdminVM>>.Fail("Failed to get admin");
 
 
-            return adminUsers.Select(user => new AdminVM
+            var admins = result.Value.Select(user => new AdminVM
             {
                 Id = user.Id,
                 FullName = user.FullName,
@@ -71,27 +59,29 @@ namespace Sekka.BLL.Classes
                 PhoneNumber = user.PhoneNumber ?? string.Empty,
                 Address = user.Address
             });
+
+            return Result<IEnumerable<AdminVM>>.OK(admins);
         }
 
 
         public async Task<Result> DeleteAdminAsync(string id)
         {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user is null)
+            var userResult = await _accountService.FindByIdAsync(id);
+            if (!userResult.success || userResult.Value is null)
                 return Result.Fail("Admin not found.");
+            var user = userResult.Value;
 
-            var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
-            if (!isAdmin)
+            var roleResult = await _accountService.IsInRoleAsync(user, "Admin");
+            if (!roleResult.success || !roleResult.Value)
                 return Result.Fail("This user is not an Admin.");
 
-            var result = await _userManager.DeleteAsync(user);
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                return Result.Fail(errors);
-            }
+            var deleteResult = await _accountService.DeleteUserAsync(user);
+
+            if (!deleteResult.success)
+                return Result.Fail("Faided to delete this admon");
 
             return Result.OK();
+
         }
     }
 }
