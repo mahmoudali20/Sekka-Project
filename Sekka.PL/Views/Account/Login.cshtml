@@ -64,6 +64,17 @@
                     Register
                 </a>
             </div>
+            <form asp-controller="Account"
+                  asp-action="GoogleLogin"
+                  method="post">
+
+                @Html.AntiForgeryToken()
+
+                <button type="submit">
+                    Continue with Google
+                </button>
+
+            </form>
 
         </div>
     </div>
