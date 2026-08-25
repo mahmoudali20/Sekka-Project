@@ -51,14 +51,15 @@ namespace Sekka.BLL.Classes
             }
 
             // 3. Create User
-            var user = await _accountService.CreateUserAsync(model.UserName, model.FullName, model.Email, model.PhoneNumber, model.Address, model.Password);
-            if (user == null)
+            var userResult = await _accountService.CreateUserAsync(model.UserName, model.FullName, model.Email, model.PhoneNumber, model.Address, model.Password);
+            if (!userResult.success)
             {
                 _attachmentService.DeleteAttachment(storedCarPhotoName, "CarsPhoto");
                 _attachmentService.DeleteAttachment(storedDriverPhotoName, "DriversPhoto");
                 return Result.Fail("Failed to create user.");
             }
 
+            var user = userResult.Value;
             // 4. Save Driver Photo Name
             user.ProfilePicture = storedDriverPhotoName;
 
@@ -100,11 +101,9 @@ namespace Sekka.BLL.Classes
             if (car is not null)
                 _unitOfWork.GetRepo<Car, int>().Delete(car);
 
-
             // Delete User
             if (user is not null)
                 _unitOfWork.GetRepo<ApplicationUser, string>().Delete(user);
-
 
             var result = await _unitOfWork.SaveChangesAsync();
 
@@ -137,18 +136,21 @@ namespace Sekka.BLL.Classes
             if (driver is null)
                 return Result.Fail("Driver not found.");
 
-            ;
 
-            var user = await _accountService.FindByIdAsync(driver.UserId);
-            if (user is null)
+
+            var userResult = await _accountService.FindByIdAsync(driver.UserId);
+            if (!userResult.success)
                 return Result.Fail("User not found.");
 
+            var user = userResult.Value;
+
             var userWithSameEmail = await _accountService.FindByEmailAsync(model.Email);
-            if (userWithSameEmail != null && userWithSameEmail.Id != user.Id)
+            if (userWithSameEmail.success && userWithSameEmail.Value != null && userWithSameEmail.Value.Id != user.Id)
                 return Result.Validation("Email already exists.");
 
+
             var userWithSameUserName = await _accountService.FindByUserNameAsync(model.UserName);
-            if (userWithSameUserName != null && userWithSameUserName.Id != user.Id)
+            if (userWithSameUserName.success && userWithSameUserName.Value != null && userWithSameUserName.Value.Id != user.Id)
                 return Result.Validation("UserName already exists.");
 
             var phoneExist = await _unitOfWork.GetRepo<ApplicationUser, string>().AnyAsync(x => x.PhoneNumber == model.PhoneNumber && x.Id != user.Id, ct);
@@ -165,13 +167,13 @@ namespace Sekka.BLL.Classes
             await _accountService.SetUserNameAsync(user, model.UserName);
 
             var userUpdateResult = await _accountService.UpdateAsync(user);
-            if (!userUpdateResult.Succeeded)
+            if (!userUpdateResult.success)
                 return Result.Fail("Failed to update User data.");
 
 
             var result = await _unitOfWork.SaveChangesAsync();
 
-            return result > 0 || userUpdateResult.Succeeded ? Result.OK() : Result.Fail("Failed to update Driver.");
+            return result > 0 || userUpdateResult.success ? Result.OK() : Result.Fail("Failed to update Driver.");
         }
 
         public async Task<Result<DriverEditVM?>> GetForUpdateAsync(int id, CancellationToken ct)
