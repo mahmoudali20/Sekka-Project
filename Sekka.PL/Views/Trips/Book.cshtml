@@ -1,0 +1,185 @@
+﻿@model Sekka.BLL.ViewModels.TripVM.BookRideVM
+
+@{
+    ViewData["Title"] = "Book a Ride";
+}
+
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<div class="container mt-5">
+    <h2>Request a Ride</h2>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+
+    <div class="row mt-4">
+        <div class="col-md-5">
+            <form asp-action="Book" method="post" id="bookingForm">
+
+                <input type="hidden" asp-for="PickupLat" id="PickupLat" />
+                <input type="hidden" asp-for="PickupLng" id="PickupLng" />
+                <input type="hidden" asp-for="DropoffLat" id="DropoffLat" />
+                <input type="hidden" asp-for="DropoffLng" id="DropoffLng" />
+                <input type="hidden" asp-for="DistanceInKm" id="DistanceInKm" />
+
+                <div class="mb-3">
+                    <label class="form-label text-primary fw-bold"><i class="bi bi-geo-alt-fill"></i> Pickup Location</label>
+                    <div class="input-group">
+                        <input asp-for="PickupLocation" id="PickupLocation" class="form-control" placeholder="Locating you..." readonly />
+                        <button type="button" class="btn btn-outline-secondary" onclick="locateUser()">
+                            <i class="bi bi-crosshair"></i> GPS
+                        </button>
+                    </div>
+                    <small class="text-muted">You can drag the blue marker on the map to adjust.</small>
+                    <span asp-validation-for="PickupLocation" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-danger fw-bold"><i class="bi bi-geo-fill"></i> Dropoff Location</label>
+                    <div class="input-group">
+                        <input asp-for="DropoffLocation" id="DropoffLocation" class="form-control" placeholder="e.g. Cairo University" />
+                        <button type="button" class="btn btn-danger" onclick="searchDropoff()">Search</button>
+                    </div>
+                    <span asp-validation-for="DropoffLocation" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Estimated Fare (EGP)</label>
+                    <input asp-for="EstimatedFare" id="EstimatedFare" class="form-control bg-light" readonly />
+                    <small class="text-success fw-bold" id="distanceText"></small>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 btn-lg" id="submitBtn" disabled>Request Ride</button>
+            </form>
+        </div>
+
+        <div class="col-md-7">
+            <div id="map" style="height: 500px; width: 100%; border-radius: 10px; border: 2px solid #ddd;"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        var map = L.map('map').setView([30.0444, 31.2357], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        var pickupMarker, dropoffMarker;
+
+        function locateUser() {
+            if (navigator.geolocation) {
+                document.getElementById('PickupLocation').value = "Locating you...";
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    var lat = position.coords.latitude;
+                    var lng = position.coords.longitude;
+
+                    setPickup(lat, lng);
+                    map.setView([lat, lng], 15);
+                }, function (error) {
+                    alert("Please allow location access to get your pickup point.");
+                    document.getElementById('PickupLocation').value = "";
+                });
+            }
+        }
+
+        locateUser();
+
+        function setPickup(lat, lng) {
+            if (pickupMarker) map.removeLayer(pickupMarker);
+
+            pickupMarker = L.marker([lat, lng], { draggable: true }).addTo(map)
+                .bindPopup("Pickup Location").openPopup();
+
+            updatePickupData(lat, lng);
+
+            pickupMarker.on('dragend', function (e) {
+                var pos = pickupMarker.getLatLng();
+                updatePickupData(pos.lat, pos.lng);
+            });
+        }
+
+        function updatePickupData(lat, lng) {
+            document.getElementById('PickupLat').value = lat;
+            document.getElementById('PickupLng').value = lng;
+
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('PickupLocation').value = data.display_name.split(',').slice(0, 3).join(',');
+                    calculateFare();
+                });
+        }
+
+        function searchDropoff() {
+            var query = document.getElementById('DropoffLocation').value;
+            if (!query) return;
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}, Egypt&limit=1`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        var lat = data[0].lat;
+                        var lng = data[0].lon;
+
+                        if (dropoffMarker) map.removeLayer(dropoffMarker);
+
+                        var redIcon = new L.Icon({
+                            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                        });
+
+                        dropoffMarker = L.marker([lat, lng], { icon: redIcon }).addTo(map).bindPopup("Dropoff").openPopup();
+
+                        document.getElementById('DropoffLat').value = lat;
+                        document.getElementById('DropoffLng').value = lng;
+                        document.getElementById('DropoffLocation').value = data[0].display_name.split(',').slice(0, 3).join(',');
+
+                        var group = new L.featureGroup([pickupMarker, dropoffMarker]);
+                        map.fitBounds(group.getBounds().pad(0.1));
+
+                        calculateFare();
+                    } else {
+                        alert("Location not found. Please try a different name.");
+                    }
+                });
+        }
+
+        function calculateFare() {
+            var pLat = document.getElementById('PickupLat').value;
+            var pLng = document.getElementById('PickupLng').value;
+            var dLat = document.getElementById('DropoffLat').value;
+            var dLng = document.getElementById('DropoffLng').value;
+
+            if (pLat && pLng && dLat && dLng) {
+                fetch(`https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=false`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.routes && data.routes.length > 0) {
+                            var distanceKm = (data.routes[0].distance / 1000).toFixed(2); 
+                            document.getElementById('DistanceInKm').value = distanceKm;
+                            document.getElementById('distanceText').innerText = `Distance: ${distanceKm} km`;
+
+                            var baseFare = 15;
+                            var perKmRate = 8;
+                            var estimated = baseFare + (distanceKm * perKmRate);
+
+                            document.getElementById('EstimatedFare').value = Math.ceil(estimated);
+
+                            document.getElementById('submitBtn').disabled = false;
+                        }
+                    });
+            }
+        }
+    </script>
+}

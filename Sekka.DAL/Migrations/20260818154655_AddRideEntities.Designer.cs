@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sekka.DAL.Context;
 
@@ -11,9 +12,11 @@ using Sekka.DAL.Context;
 namespace Sekka.DAL.Migrations
 {
     [DbContext(typeof(SekkaDbContext))]
-    partial class SekkaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260818154655_AddRideEntities")]
+    partial class AddRideEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -358,17 +361,8 @@ namespace Sekka.DAL.Migrations
                     b.Property<string>("CancelReason")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<double>("DistanceInKm")
-                        .HasColumnType("float");
-
                     b.Property<int?>("DriverId")
                         .HasColumnType("int");
-
-                    b.Property<double>("DropoffLat")
-                        .HasColumnType("float");
-
-                    b.Property<double>("DropoffLng")
-                        .HasColumnType("float");
 
                     b.Property<string>("DropoffLocation")
                         .IsRequired()
@@ -387,12 +381,6 @@ namespace Sekka.DAL.Migrations
                     b.Property<string>("PassengerId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<double>("PickupLat")
-                        .HasColumnType("float");
-
-                    b.Property<double>("PickupLng")
-                        .HasColumnType("float");
 
                     b.Property<string>("PickupLocation")
                         .IsRequired()
