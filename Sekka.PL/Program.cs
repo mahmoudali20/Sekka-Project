@@ -12,6 +12,12 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDALServices(builder.Configuration);
 builder.Services.AddBLLServices();
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<SekkaDbContext>();
+builder.Services.AddAuthentication().AddGoogle(options =>
+    {
+        options.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
+    });
+
 
 
 

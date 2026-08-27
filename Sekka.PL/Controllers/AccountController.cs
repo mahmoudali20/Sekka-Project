@@ -27,19 +27,14 @@ namespace Sekka.PL.Controllers
         {
             if (!ModelState.IsValid)
                 return View(model);
+            var result = await _accountService.RegisterPassengerAsync(model);
 
-            try
+            if (!result.success)
             {
-                await _accountService.RegisterPassengerAsync(model);
-
-                return RedirectToAction(nameof(Login));
-            }
-            catch (Exception ex)
-            {
-                ModelState.AddModelError(string.Empty, ex.Message);
-
+                ModelState.AddModelError(string.Empty, result.error ?? "Registration failed.");
                 return View(model);
             }
+            return RedirectToAction("Login", "Account");
         }
 
 
@@ -56,24 +51,31 @@ namespace Sekka.PL.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            var user = await _accountService.FindByUserNameAsync(model.UserName);
+            var userResult = await _accountService.FindByUserNameAsync(model.UserName);
 
-            if (user is null)
+            if (!userResult.success)
             {
                 ModelState.AddModelError(string.Empty, "Invalid username or password.");
                 return View(model);
             }
 
+            var user = userResult.Value;
             var validPassword = await _accountService.CheckPasswordAsync(user, model.Password);
 
-            if (!validPassword)
+            if (!validPassword.success)
             {
                 ModelState.AddModelError(string.Empty, "Invalid username or password.");
 
                 return View(model);
             }
 
-            await _accountService.SignInAsync(user, model.RememberMe);
+            var signInResult = await _accountService.SignInAsync(user, model.RememberMe);
+
+            if (!signInResult.success)
+            {
+                ModelState.AddModelError(string.Empty, signInResult.error!);
+                return View(model);
+            }
 
             return RedirectToAction("Index", "Home");
         }
@@ -81,9 +83,33 @@ namespace Sekka.PL.Controllers
 
         public async Task<IActionResult> Logout()
         {
-            await _accountService.SignOutAsync();
+            var result = await _accountService.SignOutAsync();
 
+            if (!result.success)
+                TempData["Error"] = result.error;
             return RedirectToAction("Login", "Account");
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GoogleLogin()
+        {
+            var redirectUrl = Url.Action(nameof(GoogleLoginCallback), "Account");
+            var properties = await _accountService.ConfigureExternalLoginAsync("Google", redirectUrl!);
+            return Challenge(properties, "Google");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GoogleLoginCallback()
+        {
+            var result = await _accountService.ExternalLoginAsync();
+            if (!result.success)
+            {
+                TempData["Error"] = result.error;
+                return RedirectToAction(nameof(Login));
+            }
+            return RedirectToAction("Index", "Home");
         }
 
     }

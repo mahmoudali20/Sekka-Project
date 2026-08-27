@@ -1,0 +1,199 @@
+﻿@using Sekka.DAL.Models
+@using System.Security.Claims
+@model IEnumerable<Sekka.DAL.Models.Ride>
+
+@{
+    ViewData["Title"] = "Trips Dashboard";
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var isPassenger = User.IsInRole("Passenger");
+    var isDriver = User.IsInRole("Driver");
+}
+
+<div class="container mt-4">
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger shadow-sm">@TempData["ErrorMessage"]</div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success shadow-sm">@TempData["SuccessMessage"]</div>
+    }
+
+    @if (isPassenger)
+    {
+        var myRides = Model.Where(r => r.PassengerId == currentUserId).OrderByDescending(r => r.RequestTime).ToList();
+        var activeRide = myRides.FirstOrDefault(r => r.Status != RideStatus.Completed && r.Status != RideStatus.Cancelled);
+        var unratedRide = myRides.FirstOrDefault(r => r.Status == RideStatus.Completed && r.Rating == null);
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-person-circle text-primary"></i> My Rides</h2>
+            @if (activeRide == null)
+            {
+                <a asp-action="Book" class="btn btn-primary btn-lg shadow-sm"><i class="bi bi-car-front-fill"></i> Book New Ride</a>
+            }
+        </div>
+
+        @if (activeRide != null)
+        {
+            <div class="card shadow border-primary mb-4">
+                <div class="card-header bg-primary text-white fw-bold">
+                    <i class="bi bi-geo-alt"></i> Active Ride Status: @activeRide.Status
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">From: @activeRide.PickupLocation</h5>
+                    <h5 class="card-title">To: @activeRide.DropoffLocation</h5>
+                    <hr />
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <p class="mb-2 text-muted">Estimated Fare: <strong class="text-dark fs-5">@activeRide.EstimatedFare EGP</strong></p>
+
+                            @if (activeRide.DriverId.HasValue && activeRide.Driver != null)
+                            {
+                                <div class="p-3 bg-light rounded border">
+                                    <p class="mb-1 text-success fw-bold"><i class="bi bi-person-check-fill"></i> Captain: @activeRide.Driver.User?.FullName</p>
+                                    <p class="mb-1"><i class="bi bi-telephone-fill text-primary"></i> Phone: @activeRide.Driver.User?.PhoneNumber</p>
+                                    @if (activeRide.Driver.Car != null)
+                                    {
+                                        <p class="mb-0"><i class="bi bi-car-front-fill text-danger"></i> Car: <strong>@activeRide.Driver.Car.Color @activeRide.Driver.Car.Model</strong></p>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="mb-0 text-warning fw-bold"><i class="bi bi-hourglass-split"></i> Looking for a driver...</p>
+                            }
+                        </div>
+                        <div class="col-md-4 text-end">
+                            @if (activeRide.Status == RideStatus.Requested || activeRide.Status == RideStatus.Accepted)
+                            {
+                                <form asp-action="Cancel" method="post">
+                                    <input type="hidden" name="rideId" value="@activeRide.RideID" />
+                                    <input type="hidden" name="reason" value="Changed my mind" />
+                                    <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> Cancel Ride</button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (unratedRide != null)
+        {
+            <div class="card shadow border-info mb-4 bg-light">
+                <div class="card-body text-center p-4">
+                    <h4 class="text-info"><i class="bi bi-star-fill"></i> Rate Your Last Trip</h4>
+                    <p>You recently completed a trip with <strong>@(unratedRide.Driver?.User?.FullName ?? "your captain")</strong>.</p>
+
+                    <form asp-action="Rate" method="post" class="d-inline-block mt-2">
+                        <input type="hidden" name="RideId" value="@unratedRide.RideID" />
+                        <div class="input-group mb-3 justify-content-center">
+                            <select name="Score" class="form-select w-auto text-warning fw-bold">
+                                <option value="5">5 ⭐⭐⭐⭐⭐</option>
+                                <option value="4">4 ⭐⭐⭐⭐</option>
+                                <option value="3">3 ⭐⭐⭐</option>
+                                <option value="2">2 ⭐⭐</option>
+                                <option value="1">1 ⭐</option>
+                            </select>
+                            <input type="text" name="Comment" class="form-control" placeholder="Write a comment..." style="max-width: 300px;" />
+                            <button type="submit" class="btn btn-info text-white fw-bold">Submit Rating</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-light border text-center p-5 shadow-sm">
+                <h4 class="text-muted">You have no active rides.</h4>
+                <p>Ready to go somewhere?</p>
+                <a asp-action="Book" class="btn btn-primary mt-2">Book a Ride Now</a>
+            </div>
+        }
+    }
+
+    @if (isDriver)
+    {
+        var myActiveRide = Model.FirstOrDefault(r => r.Driver?.UserId == currentUserId && r.Status != RideStatus.Completed && r.Status != RideStatus.Cancelled);
+        var availableRequests = Model.Where(r => r.Status == RideStatus.Requested).OrderByDescending(r => r.RequestTime).ToList();
+
+        <h2 class="mb-4"><i class="bi bi-steering text-success"></i> Driver Dashboard</h2>
+
+        @if (myActiveRide != null)
+        {
+            <div class="card shadow border-success mb-5">
+                <div class="card-header bg-success text-white fw-bold">
+                    <i class="bi bi-play-circle-fill"></i> Current Active Trip
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <p class="fs-5 mb-3"><i class="bi bi-person-fill text-primary"></i> <strong>Passenger:</strong> @(myActiveRide.Passenger?.FullName ?? "Passenger Details Hidden")</p>
+
+                            <p><strong><i class="bi bi-geo-alt"></i> Pickup:</strong> @myActiveRide.PickupLocation</p>
+                            <p><strong><i class="bi bi-geo"></i> Dropoff:</strong> @myActiveRide.DropoffLocation</p>
+                            <p><strong>Distance:</strong> @myActiveRide.DistanceInKm km | <strong>Fare:</strong> @myActiveRide.EstimatedFare EGP</p>
+                            <span class="badge bg-warning text-dark fs-6">Status: @myActiveRide.Status</span>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-center justify-content-end gap-2">
+                            @if (myActiveRide.Status == RideStatus.Accepted)
+                            {
+                                <form asp-action="Start" method="post">
+                                    <input type="hidden" name="rideId" value="@myActiveRide.RideID" />
+                                    <button type="submit" class="btn btn-warning btn-lg shadow-sm"><i class="bi bi-geo-fill"></i> Start Ride</button>
+                                </form>
+                            }
+                            else if (myActiveRide.Status == RideStatus.Started)
+                            {
+                                <form asp-action="Complete" method="post">
+                                    <input type="hidden" name="rideId" value="@myActiveRide.RideID" />
+                                    <input type="hidden" name="actualFare" value="@myActiveRide.EstimatedFare" />
+                                    <button type="submit" class="btn btn-info btn-lg shadow-sm text-white"><i class="bi bi-check-all"></i> Complete Ride</button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (myActiveRide == null)
+        {
+            <h4 class="mb-3 text-muted">Available Requests</h4>
+            <div class="row">
+                @if (!availableRequests.Any())
+                {
+                    <div class="col-12">
+                        <div class="alert alert-secondary text-center">No new ride requests at the moment.</div>
+                    </div>
+                }
+
+                @foreach (var request in availableRequests)
+                {
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary"><i class="bi bi-geo-alt"></i> @request.DistanceInKm km Trip</h5>
+                                <p class="text-dark fw-bold mb-2"><i class="bi bi-person"></i> @(request.Passenger?.FullName ?? "New Passenger")</p>
+
+                                <p class="card-text mb-1"><small><strong>From:</strong> @request.PickupLocation</small></p>
+                                <p class="card-text mb-3"><small><strong>To:</strong> @request.DropoffLocation</small></p>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-success fs-5">@request.EstimatedFare EGP</span>
+                                    <form asp-action="Accept" method="post">
+                                        <input type="hidden" name="rideId" value="@request.RideID" />
+                                        <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle"></i> Accept</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="card-footer text-muted text-center" style="font-size: 0.85rem;">
+                                Requested at @request.RequestTime.ToLocalTime().ToString("hh:mm tt")
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
