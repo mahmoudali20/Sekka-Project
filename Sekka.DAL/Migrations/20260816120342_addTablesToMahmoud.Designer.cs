@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sekka.DAL.Context;
 
@@ -11,9 +12,11 @@ using Sekka.DAL.Context;
 namespace Sekka.DAL.Migrations
 {
     [DbContext(typeof(SekkaDbContext))]
-    partial class SekkaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260816120342_addTablesToMahmoud")]
+    partial class addTablesToMahmoud
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -261,7 +264,7 @@ namespace Sekka.DAL.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Cars", (string)null);
+                    b.ToTable("Cars");
                 });
 
             modelBuilder.Entity("Sekka.DAL.Models.Driver", b =>
@@ -301,7 +304,7 @@ namespace Sekka.DAL.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Drivers", (string)null);
+                    b.ToTable("Drivers");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

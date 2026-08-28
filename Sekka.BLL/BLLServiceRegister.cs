@@ -15,6 +15,7 @@ namespace Sekka.BLL
             services.AddScoped<IDriverService, DriverService>();
             services.AddScoped<IAttachmentService, AttachmentService>();
             services.AddScoped<IAdminService, AdminService>();
+            services.AddScoped<ITripService, TripService>();
             services.AddAutoMapper(typeof(DriverProfile));
 
             return services;
