@@ -19,7 +19,7 @@ namespace Sekka.DAL.Repositories.Classes
 				.AsNoTracking()
 				.FirstOrDefaultAsync(c => c.TicketReference == ticketRef, ct);
 
-		public async Task<IEnumerable<Complaint>> GetByComplainantAsync(int complainantId, CancellationToken ct = default)
+		public async Task<IEnumerable<Complaint>> GetByComplainantAsync(string complainantId, CancellationToken ct = default)
 			=> await _dbContext.Complaints
 				.AsNoTracking()
 				.Where(c => c.ComplainantId == complainantId)
@@ -40,7 +40,7 @@ namespace Sekka.DAL.Repositories.Classes
 				.OrderByDescending(c => c.CreatedAt)
 				.ToListAsync(ct);
 
-		public async Task<IEnumerable<Complaint>> GetByAgentAsync(int agentId, CancellationToken ct = default)
+		public async Task<IEnumerable<Complaint>> GetByAgentAsync(string agentId, CancellationToken ct = default)
 			=> await _dbContext.Complaints
 				.AsNoTracking()
 				.Where(c => c.AssignedAgentId == agentId)

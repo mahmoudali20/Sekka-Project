@@ -39,10 +39,13 @@ namespace Sekka.DAL.Models
 		public int Id { get; set; }
 		public string TicketReference { get; set; } = string.Empty;
 
-		public int ComplainantId { get; set; }
+		public string ComplainantId { get; set; } = string.Empty;
+
 		public int? TripId { get; set; }
-		public int? TargetUserId { get; set; }
-		public int? AssignedAgentId { get; set; }
+
+		public string? TargetUserId { get; set; }
+
+		public string? AssignedAgentId { get; set; }
 
 		public ComplaintCategory Category { get; set; }
 		public ComplaintPriority Priority { get; set; }

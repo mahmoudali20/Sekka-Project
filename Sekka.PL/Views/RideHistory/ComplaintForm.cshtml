@@ -1,0 +1,170 @@
+@model Sekka.BLL.ViewModels.ComplaintVM
+@using Sekka.DAL.Models
+
+@{
+    bool isLostItem = Model.Category == ComplaintCategory.LostItem;
+    string pageTitle = isLostItem ? "Report a Lost Item" : "File a Complaint";
+    string submitLabel = isLostItem ? "Submit Lost-Item Report" : "Submit Complaint";
+    string iconClass = isLostItem ? "bi-bag-x-fill text-warning" : "bi-flag-fill text-danger";
+    ViewData["Title"] = pageTitle;
+
+    // Filter category options depending on mode
+    var filteredCategories = Html.GetEnumSelectList<ComplaintCategory>()
+        .Where(item => isLostItem
+            ? item.Value == ((int)ComplaintCategory.LostItem).ToString()
+            : item.Value != ((int)ComplaintCategory.LostItem).ToString())
+        .ToList();
+}
+
+@section HeadLinks {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+}
+
+<div class="container py-4" style="max-width: 720px;">
+
+    @* Header *@
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="bg-light rounded-circle p-3 fs-3">
+            <i class="bi @iconClass"></i>
+        </div>
+        <div>
+            <h2 class="fw-bold mb-0">@pageTitle</h2>
+            @if (ViewBag.RideId is int rideId)
+            {
+                <p class="text-muted small mb-0">For ride #@rideId</p>
+            }
+        </div>
+    </div>
+
+    @* Category switcher tabs — pass category as int so model binding resolves to the enum *@
+    <div class="d-flex gap-2 mb-4">
+        <a asp-controller="RideHistory"
+           asp-action="FileComplaint"
+           asp-route-rideId="@ViewBag.RideId"
+           asp-route-category="@((int)ComplaintCategory.DriverBehavior)"
+           class="btn @(isLostItem ? "btn-outline-danger" : "btn-danger") btn-sm">
+            <i class="bi bi-flag-fill me-1"></i> Complaint
+        </a>
+        <a asp-controller="RideHistory"
+           asp-action="FileComplaint"
+           asp-route-rideId="@ViewBag.RideId"
+           asp-route-category="@((int)ComplaintCategory.LostItem)"
+           class="btn @(isLostItem ? "btn-warning" : "btn-outline-warning") btn-sm">
+            <i class="bi bi-bag-x-fill me-1"></i> Lost Item
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <form asp-controller="RideHistory" asp-action="FileComplaint" method="post">
+                @Html.AntiForgeryToken()
+
+                @* Hidden fields — TripId and Status are set by the controller, not the user *@
+                <input type="hidden" asp-for="TripId" />
+                <input type="hidden" asp-for="Status" />
+                <input type="hidden" asp-for="ComplainantId" />
+
+                @* Category *@
+                <div class="mb-3">
+                    <label asp-for="Category" class="form-label fw-semibold">Category</label>
+                    @if (isLostItem)
+                    {
+                        <input type="hidden" asp-for="Category" value="@((int)ComplaintCategory.LostItem)" />
+                        <select class="form-select" disabled>
+                            <option selected>Lost Item</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <select asp-for="Category"
+                                asp-items="filteredCategories"
+                                class="form-select">
+                        </select>
+                    }
+                    <span asp-validation-for="Category" class="text-danger small"></span>
+                </div>
+
+                @* Priority — hidden and defaulted to Medium for lost-item reports *@
+                @if (isLostItem)
+                {
+                    <input type="hidden" asp-for="Priority" value="@((int)ComplaintPriority.Medium)" />
+                }
+                else
+                {
+                    <div class="mb-3">
+                        <label asp-for="Priority" class="form-label fw-semibold">Priority</label>
+                        <select asp-for="Priority"
+                                asp-items="Html.GetEnumSelectList<ComplaintPriority>()"
+                                class="form-select">
+                        </select>
+                        <span asp-validation-for="Priority" class="text-danger small"></span>
+                    </div>
+                }
+
+                @* Subject *@
+                <div class="mb-3">
+                    <label asp-for="Subject" class="form-label fw-semibold">
+                        @(isLostItem ? "Item Description (brief)" : "Subject")
+                    </label>
+                    <input asp-for="Subject"
+                           class="form-control"
+                           placeholder="@(isLostItem ? "e.g. Black backpack with laptop inside" : "e.g. Driver was rude and drove aggressively")" />
+                    <span asp-validation-for="Subject" class="text-danger small"></span>
+                </div>
+
+                @* Description *@
+                <div class="mb-4">
+                    <label asp-for="Description" class="form-label fw-semibold">
+                        @(isLostItem ? "Details (where/when you last had it)" : "Full Description")
+                    </label>
+                    <textarea asp-for="Description"
+                              class="form-control"
+                              rows="5"
+                              placeholder="@(isLostItem
+                                                      ? "Describe the item, approximate time you noticed it missing, and any other details that may help us locate it..."
+                                                      : "Please describe the incident in detail so our team can investigate...")"></textarea>
+                    <div class="d-flex justify-content-between">
+                        <span asp-validation-for="Description" class="text-danger small"></span>
+                        <small class="text-muted">Max 2000 characters</small>
+                    </div>
+                </div>
+
+                @* Info box *@
+                @if (isLostItem)
+                {
+                    <div class="alert alert-warning small mb-4">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        We will contact you and the driver. Please check your registered email for updates.
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info small mb-4">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        Our support team will review your complaint within 24 hours and assign it to an agent.
+                    </div>
+                }
+
+                @* Submit / Cancel *@
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-controller="RideHistory" asp-action="Index"
+                       class="btn btn-outline-secondary">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="btn @(isLostItem ? "btn-warning" : "btn-danger") px-4">
+                        <i class="bi @(isLostItem ? "bi-send-check" : "bi-send") me-1"></i>
+                        @submitLabel
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

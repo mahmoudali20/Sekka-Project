@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Sekka.PL.styles.css" asp-append-version="true" />
+    @* Per-page head links (e.g. Bootstrap Icons CDN from child views) *@
+    @await RenderSectionAsync("HeadLinks", required: false)
 </head>
 <body>
 
@@ -14,8 +16,8 @@
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Sekka.PL</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
@@ -30,13 +32,19 @@
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark fw-bold text-primary" asp-area="" asp-controller="Trips" asp-action="Index">Trips Dashboard</a>
+                                <a class="nav-link text-dark fw-bold text-primary"
+                                   asp-area="" asp-controller="Trips" asp-action="Index">Trips Dashboard</a>
                             </li>
 
                             @if (User.IsInRole("Passenger"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark fw-bold text-success" asp-area="" asp-controller="Trips" asp-action="Book">Book Ride</a>
+                                    <a class="nav-link text-dark fw-bold"
+                                       asp-area="" asp-controller="Trips" asp-action="Book">Book Ride</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark fw-bold"
+                                       asp-controller="RideHistory" asp-action="Index">Ride History</a>
                                 </li>
                             }
                         }
@@ -44,23 +52,29 @@
                         @if (User.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Driver" asp-action="Index">AllDrivers</a>
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Driver" asp-action="Index">All Drivers</a>
+                            </li>
+                            @* {{!-- Admin: view only their own assigned tickets --}} *@
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Complaints" asp-action="MyTickets">My Tickets</a>
                             </li>
                         }
+
                         @if (User.Identity?.IsAuthenticated == true && User.IsInRole("SuperAdmin"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Admin" asp-action="Index">ManageAdmins</a>
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Admin" asp-action="Index">Manage Admins</a>
+                            </li>
+                            @* {{!-- SuperAdmin: see all complaints and assign them to admins --}} *@
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Complaints" asp-action="Index">All Complaints</a>
                             </li>
                         }
                     </ul>
 
-
-
-                    <ul class="navbar-nav ">
-
-                        @if(User.Identity.IsAuthenticated == false)
-                        {                       
+                    <ul class="navbar-nav">
+                        @if (User.Identity?.IsAuthenticated == false)
+                        {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Login">Login</a>
                             </li>
@@ -68,24 +82,20 @@
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Register">Register</a>
                             </li>
                         }
-
                         else
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Logout">Logout</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link text-dark" href="#"> Welcom @User.Identity.Name</a>
+                                <a class="nav-link text-dark" href="#">Welcome @User.Identity?.Name</a>
                             </li>
                         }
-
                     </ul>
-
                 </div>
             </div>
         </nav>
     </header>
-
 
     <div class="container">
         <main role="main" class="pb-3">
@@ -98,6 +108,7 @@
             &copy; 2026 - Sekka.PL - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

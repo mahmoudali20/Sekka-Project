@@ -19,7 +19,6 @@ namespace Sekka.BLL.Services
 			_mapper = mapper;
 		}
 
-
 		public async Task<IEnumerable<ComplaintVM>> GetAllAsync()
 		{
 			var list = await _repo.GetAllAsync();
@@ -38,7 +37,8 @@ namespace Sekka.BLL.Services
 			return c is null ? null : _mapper.Map<ComplaintVM>(c);
 		}
 
-		public async Task<IEnumerable<ComplaintVM>> GetByComplainantAsync(int complainantId)
+		/// <param name="complainantId">ApplicationUser.Id (GUID string) of the complainant.</param>
+		public async Task<IEnumerable<ComplaintVM>> GetByComplainantAsync(string complainantId)
 		{
 			var list = await _repo.GetByComplainantAsync(complainantId);
 			return _mapper.Map<IEnumerable<ComplaintVM>>(list);
@@ -56,15 +56,25 @@ namespace Sekka.BLL.Services
 			return _mapper.Map<IEnumerable<ComplaintVM>>(list);
 		}
 
-		public async Task<IEnumerable<ComplaintVM>> GetByAgentAsync(int agentId)
+		/// <param name="agentId">ApplicationUser.Id (GUID string) of the assigned admin.</param>
+		public async Task<IEnumerable<ComplaintVM>> GetByAgentAsync(string agentId)
 		{
 			var list = await _repo.GetByAgentAsync(agentId);
 			return _mapper.Map<IEnumerable<ComplaintVM>>(list);
 		}
 
-
 		public async Task<ComplaintVM> CreateAsync(ComplaintVM vm)
 		{
+			// Hard guard: one complaint per category per trip — enforced at the service
+			// level so it cannot be bypassed by any controller path or direct POST.
+			if (vm.TripId.HasValue)
+			{
+				var existing = await _repo.GetByTripAsync(vm.TripId.Value);
+				if (existing.Any(c => c.Category == vm.Category))
+					throw new InvalidOperationException(
+						$"A {vm.Category} report already exists for trip {vm.TripId}.");
+			}
+
 			var model = _mapper.Map<Complaint>(vm);
 
 			if (string.IsNullOrEmpty(model.TicketReference))
@@ -91,7 +101,8 @@ namespace Sekka.BLL.Services
 			return true;
 		}
 
-		public async Task<bool> AssignAgentAsync(int complaintId, int agentId)
+		/// <param name="agentId">ApplicationUser.Id (GUID string) of the admin to assign.</param>
+		public async Task<bool> AssignAgentAsync(int complaintId, string agentId)
 		{
 			var complaint = await _repo.GetByIdAsync(complaintId);
 			if (complaint is null) return false;

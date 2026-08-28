@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sekka.DAL.Context;
 
@@ -11,9 +12,11 @@ using Sekka.DAL.Context;
 namespace Sekka.DAL.Migrations
 {
     [DbContext(typeof(SekkaDbContext))]
-    partial class SekkaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260828151311_AddComplaintsTable")]
+    partial class AddComplaintsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -272,15 +275,14 @@ namespace Sekka.DAL.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AssignedAgentId")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("AssignedAgentId")
+                        .HasColumnType("int");
 
                     b.Property<int>("Category")
                         .HasColumnType("int");
 
-                    b.Property<string>("ComplainantId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("ComplainantId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -305,8 +307,8 @@ namespace Sekka.DAL.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("TargetUserId")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("TargetUserId")
+                        .HasColumnType("int");
 
                     b.Property<string>("TicketReference")
                         .IsRequired()
@@ -316,11 +318,6 @@ namespace Sekka.DAL.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TripId", "Category")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Complaints_TripId_Category")
-                        .HasFilter("[TripId] IS NOT NULL");
 
                     b.ToTable("Complaints");
                 });
