@@ -1,4 +1,5 @@
 @model IEnumerable<Sekka.BLL.ViewModels.ComplaintVM>
+@using Sekka.DAL.Models
 @{
     ViewData["Title"] = "All Complaints";
 }
@@ -32,7 +33,8 @@ else
                     <th>Category</th>
                     <th>Priority</th>
                     <th>Status</th>
-                    <th>Trip ID</th>
+                    <th>Complainant</th>
+                    <th>Driver</th>
                     <th>Submitted</th>
                     <th>Assigned Agent</th>
                     <th>Actions</th>
@@ -41,51 +43,77 @@ else
             <tbody>
                 @foreach (var c in Model)
                 {
+                    var priClass = c.Priority switch
+                    {
+                        ComplaintPriority.Critical => "danger",
+                        ComplaintPriority.High     => "warning",
+                        ComplaintPriority.Medium   => "info",
+                        _                          => "secondary"
+                    };
+                    var statusClass = c.Status switch
+                    {
+                        ComplaintStatus.Open      => "primary",
+                        ComplaintStatus.InReview  => "info",
+                        ComplaintStatus.Escalated => "warning",
+                        ComplaintStatus.Resolved  => "success",
+                        ComplaintStatus.Closed    => "secondary",
+                        _                         => "secondary"
+                    };
+
                     <tr>
                         <td><code>@c.TicketReference</code></td>
                         <td>@c.Category</td>
+                        <td><span class="badge bg-@priClass">@c.Priority</span></td>
+                        <td><span class="badge bg-@statusClass">@c.Status</span></td>
+
+                        @* Complainant (passenger) *@
                         <td>
-                            @{
-                                var priClass = c.Priority switch
-                                {
-                                    Sekka.DAL.Models.ComplaintPriority.Critical => "danger",
-                                    Sekka.DAL.Models.ComplaintPriority.High     => "warning",
-                                    Sekka.DAL.Models.ComplaintPriority.Medium   => "info",
-                                    _                                            => "secondary"
-                                };
-                            }
-                            <span class="badge bg-@priClass">@c.Priority</span>
-                        </td>
-                        <td>
-                            @{
-                                var statusClass = c.Status switch
-                                {
-                                    Sekka.DAL.Models.ComplaintStatus.Open       => "primary",
-                                    Sekka.DAL.Models.ComplaintStatus.InReview   => "info",
-                                    Sekka.DAL.Models.ComplaintStatus.Escalated  => "warning",
-                                    Sekka.DAL.Models.ComplaintStatus.Resolved   => "success",
-                                    Sekka.DAL.Models.ComplaintStatus.Closed     => "secondary",
-                                    _                                            => "secondary"
-                                };
-                            }
-                            <span class="badge bg-@statusClass">@c.Status</span>
-                        </td>
-                        <td>@(c.TripId?.ToString() ?? "—")</td>
-                        <td>@c.CreatedAt.ToString("dd MMM yyyy")</td>
-                        <td>
-                            @if (c.AssignedAgentId!=null)
+                            @if (c.ComplainantName is not null)
                             {
-                                <span class="text-success">&#10003; Assigned</span>
+                                <span>@c.ComplainantName</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">@c.ComplainantId</span>
+                            }
+                        </td>
+
+                        @* Driver (only meaningful when a trip is linked) *@
+                        <td>
+                            @if (c.DriverName is not null)
+                            {
+                                <span>@c.DriverName</span>
+                            }
+                            else if (c.TripId.HasValue)
+                            {
+                                <span class="text-muted small">Trip #@c.TripId</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+
+                        <td>@c.CreatedAt.ToString("dd MMM yyyy")</td>
+
+                        @* Assigned agent *@
+                        <td>
+                            @if (c.AssignedAgentName is not null)
+                            {
+                                <span class="text-success">&#10003; @c.AssignedAgentName</span>
                             }
                             else
                             {
                                 <span class="text-muted">Unassigned</span>
                             }
                         </td>
+
                         <td>
+                            <a asp-action="Details" asp-route-id="@c.Id"
+                               class="btn btn-sm btn-outline-secondary me-1">Details</a>
                             <a asp-action="Assign" asp-route-id="@c.Id"
                                class="btn btn-sm btn-outline-primary">
-                                @(c.AssignedAgentId!=null ? "Reassign" : "Assign")
+                                @(c.AssignedAgentId != null ? "Reassign" : "Assign")
                             </a>
                         </td>
                     </tr>

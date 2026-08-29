@@ -1,4 +1,5 @@
 @model Sekka.BLL.ViewModels.ComplaintVM
+@using Sekka.DAL.Models
 @{
     ViewData["Title"] = "Assign Ticket";
     var adminList = ViewBag.AdminList as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
@@ -36,8 +37,30 @@
                     <dt class="col-sm-4">Status</dt>
                     <dd class="col-sm-8">@Model.Status</dd>
 
-                    <dt class="col-sm-4">Trip ID</dt>
-                    <dd class="col-sm-8">@(Model.TripId?.ToString() ?? "—")</dd>
+                    @* ── Complainant ── *@
+                    <dt class="col-sm-4">Submitted By</dt>
+                    <dd class="col-sm-8">
+                        @(Model.ComplainantName ?? Model.ComplainantId)
+                    </dd>
+
+                    @* ── Driver ── *@
+                    @if (Model.DriverName is not null)
+                    {
+                        <dt class="col-sm-4">Driver</dt>
+                        <dd class="col-sm-8">@Model.DriverName</dd>
+                    }
+                    else if (Model.TripId.HasValue)
+                    {
+                        <dt class="col-sm-4">Trip</dt>
+                        <dd class="col-sm-8">#@Model.TripId</dd>
+                    }
+
+                    @* ── Current agent ── *@
+                    @if (Model.AssignedAgentName is not null)
+                    {
+                        <dt class="col-sm-4">Currently Assigned</dt>
+                        <dd class="col-sm-8 text-success">@Model.AssignedAgentName</dd>
+                    }
 
                     <dt class="col-sm-4">Submitted</dt>
                     <dd class="col-sm-8">@Model.CreatedAt.ToString("dd MMM yyyy HH:mm")</dd>

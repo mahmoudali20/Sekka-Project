@@ -40,5 +40,9 @@ namespace Sekka.BLL.ViewModels
 		public string CategoryDisplay { get; set; } = string.Empty;
 		public string PriorityDisplay { get; set; } = string.Empty;
 		public string StatusDisplay { get; set; } = string.Empty;
+
+		public string? ComplainantName { get; set; }
+		public string? AssignedAgentName { get; set; }
+		public string? DriverName { get; set; }
 	}
 }

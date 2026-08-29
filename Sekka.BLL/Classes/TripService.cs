@@ -159,7 +159,9 @@ namespace Sekka.BLL.Classes
 			return rides.OrderByDescending(r => r.RequestTime);
 		}
 
-		// Returns all rides for a specific passenger, newest first, with Rating hydrated.
+		// Returns all rides for a specific passenger, newest first.
+		// FIX: GetAllWithUserAsync already eager-loads Driver.User, so driver names
+		//      are available without a second round-trip.
 		public async Task<IEnumerable<Ride>> GetByPassengerAsync(string passengerId, CancellationToken ct = default)
 		{
 			var allRides = (await _unitOfWork.GetRepo<Ride, int>()
@@ -172,20 +174,21 @@ namespace Sekka.BLL.Classes
 				return allRides;
 
 			var rideIds = allRides.Select(r => r.RideID).ToHashSet();
-			var ratings = (await _unitOfWork.GetRepo<Rating, int>().GetAllAsync(false, ct))
-						   ?.Where(r => rideIds.Contains(r.RideId))
-						   .ToList()
-						   ?? new List<Rating>();
-
 			var driverIds = allRides.Where(r => r.DriverId.HasValue)
-									.Select(r => r.DriverId!.Value)
-									.Distinct()
-									.ToHashSet();
+									 .Select(r => r.DriverId!.Value)
+									 .Distinct()
+									 .ToHashSet();
 
+			// GetAllWithUserAsync eager-loads Driver.User → driver name is available
 			var drivers = (await _unitOfWork.DriverRepository.GetAllWithUserAsync(ct))
 						  ?.Where(d => driverIds.Contains(d.Id))
 						  .ToList()
 						  ?? new List<Driver>();
+
+			var ratings = (await _unitOfWork.GetRepo<Rating, int>().GetAllAsync(false, ct))
+						  ?.Where(r => rideIds.Contains(r.RideId))
+						  .ToList()
+						  ?? new List<Rating>();
 
 			foreach (var ride in allRides)
 			{
@@ -193,12 +196,13 @@ namespace Sekka.BLL.Classes
 
 				if (ride.DriverId.HasValue)
 					ride.Driver = drivers.FirstOrDefault(d => d.Id == ride.DriverId.Value);
+				// ride.Driver.User is now populated by GetAllWithUserAsync
 			}
 
 			return allRides.OrderByDescending(r => r.RequestTime);
 		}
 
-		// Returns a single ride by ID, with Rating hydrated. Returns null if not found.
+		// Returns a single ride by ID, with Rating hydrated.
 		public async Task<Ride?> GetRideByIdAsync(int rideId, CancellationToken ct = default)
 		{
 			var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);
@@ -218,6 +222,7 @@ namespace Sekka.BLL.Classes
 			if (ride == null) return Result.Fail("Ride not found.");
 			if (ride.PassengerId != passengerId) return Result.Fail("Unauthorized to rate this ride.", ResultKind.Forbidden);
 			if (ride.Status != RideStatus.Completed) return Result.Fail("You can only rate completed rides.");
+			if (!ride.DriverId.HasValue) return Result.Fail("No driver assigned to this ride.");
 
 			bool alreadyRated = await _unitOfWork.GetRepo<Rating, int>().AnyAsync(r => r.RideId == model.RideId, ct);
 			if (alreadyRated) return Result.Fail("You have already rated this ride.");
@@ -226,7 +231,7 @@ namespace Sekka.BLL.Classes
 			{
 				RideId = model.RideId,
 				PassengerId = passengerId,
-				DriverId = ride.DriverId!.Value,
+				DriverId = ride.DriverId.Value,
 				Score = model.Score,
 				Comment = model.Comment,
 				CreatedAt = DateTime.UtcNow

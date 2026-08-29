@@ -5,7 +5,6 @@
 @{
     ViewData["Title"] = "My Ride History";
 
-    // Injected by the controller
     var complaintsByRide = ViewBag.ComplaintsByRide as Dictionary<int, HashSet<ComplaintCategory>>
                            ?? new Dictionary<int, HashSet<ComplaintCategory>>();
 
@@ -27,7 +26,7 @@
         <span class="badge bg-primary fs-6">@Model.Count() Rides</span>
     </div>
 
-    @* Success / info alerts *@
+    @* Alerts *@
     @if (TempData["Success"] is string successMsg)
     {
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -39,6 +38,13 @@
     {
         <div class="alert alert-info alert-dismissible fade show" role="alert">
             <i class="bi bi-info-circle-fill me-2"></i>@infoMsg
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] is string errorMsg)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-x-circle-fill me-2"></i>@errorMsg
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
@@ -59,26 +65,33 @@
                 {
                     RideStatus.Completed => "success",
                     RideStatus.Cancelled => "danger",
-                    RideStatus.Started => "primary",
-                    RideStatus.Accepted => "info",
+                    RideStatus.Started   => "primary",
+                    RideStatus.Accepted  => "info",
                     RideStatus.Requested => "warning",
-                    _ => "secondary"
+                    _                    => "secondary"
                 };
 
                 var canReport = ride.Status == RideStatus.Completed
                              || ride.Status == RideStatus.Cancelled;
 
-                // Which categories has the user already filed for this ride?
+                var canRate = ride.Status == RideStatus.Completed
+                           && ride.DriverId.HasValue
+                           && ride.Rating is null;
+
+                // Driver name: ride.Driver is hydrated by GetByPassengerAsync,
+                // and GetAllWithUserAsync populates Driver.User so FullName is available.
+                string? driverName = ride.Driver?.User?.FullName;
+
                 complaintsByRide.TryGetValue(ride.RideID, out var filedCategories);
                 filedCategories ??= new HashSet<ComplaintCategory>();
 
-                // Check for any general complaint (non-LostItem) vs Lost Item
-                bool hasGeneralComplaint = filedCategories.Any(c => c != ComplaintCategory.LostItem);
+                bool hasGeneralComplaint  = filedCategories.Any(c => c != ComplaintCategory.LostItem);
                 bool hasLostItemComplaint = filedCategories.Contains(ComplaintCategory.LostItem);
 
-                // Fetch details for general complaint and lost item complaint
-                var generalComplaintKey = complaintDetail.Keys.FirstOrDefault(k => k.Item1 == ride.RideID && k.Item2 != ComplaintCategory.LostItem);
-                ComplaintVM? generalComplaint = generalComplaintKey != default ? complaintDetail[generalComplaintKey] : null;
+                var generalComplaintKey = complaintDetail.Keys
+                    .FirstOrDefault(k => k.Item1 == ride.RideID && k.Item2 != ComplaintCategory.LostItem);
+                ComplaintVM? generalComplaint = generalComplaintKey != default
+                    ? complaintDetail[generalComplaintKey] : null;
 
                 complaintDetail.TryGetValue((ride.RideID, ComplaintCategory.LostItem), out var lostItemComplaint);
 
@@ -86,17 +99,30 @@
                     <div class="card shadow-sm border-0 rounded-3">
                         <div class="card-body">
 
-                            @* Top row: status badge + date *@
+                            @* ── Top row: status + date ── *@
                             <div class="d-flex justify-content-between align-items-start mb-3">
-                                <span class="badge bg-@statusColor px-3 py-2 fs-6">
-                                    @ride.Status
-                                </span>
+                                <span class="badge bg-@statusColor px-3 py-2 fs-6">@ride.Status</span>
                                 <small class="text-muted">
                                     @ride.RequestTime.ToLocalTime().ToString("dd MMM yyyy  hh:mm tt")
                                 </small>
                             </div>
 
-                            @* Route *@
+                            @* ── Driver info ── *@
+                            @if (driverName is not null)
+                            {
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center"
+                                         style="width:36px;height:36px;">
+                                        <i class="bi bi-person-fill text-secondary"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-muted" style="font-size:.75rem;">Driver</div>
+                                        <div class="fw-semibold" style="font-size:.9rem;">@driverName</div>
+                                    </div>
+                                </div>
+                            }
+
+                            @* ── Route ── *@
                             <div class="row g-2 mb-3">
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-start gap-2">
@@ -118,7 +144,7 @@
                                 </div>
                             </div>
 
-                            @* Fare / distance *@
+                            @* ── Fare / distance / rating ── *@
                             <div class="row g-2 mb-3">
                                 <div class="col-6 col-md-3">
                                     <div class="text-muted small">Distance</div>
@@ -139,17 +165,21 @@
                                 {
                                     <div class="col-6 col-md-3">
                                         <div class="text-muted small">Your Rating</div>
-                                        <div class="fw-semibold">
+                                        <div class="fw-semibold" title="@ride.Rating.Score / 5">
                                             @for (int i = 1; i <= 5; i++)
                                             {
                                                 <span class="@(i <= ride.Rating.Score ? "text-warning" : "text-muted")">★</span>
                                             }
                                         </div>
+                                        @if (!string.IsNullOrWhiteSpace(ride.Rating.Comment))
+                                        {
+                                            <small class="text-muted fst-italic">"@ride.Rating.Comment"</small>
+                                        }
                                     </div>
                                 }
                             </div>
 
-                            @* Cancel reason *@
+                            @* ── Cancel reason ── *@
                             @if (ride.IsCancelled && !string.IsNullOrEmpty(ride.CancelReason))
                             {
                                 <div class="alert alert-warning py-2 mb-3 small">
@@ -157,71 +187,83 @@
                                 </div>
                             }
 
-                            @* ── Complaint / Lost-item action area ── *@
-                            @if (canReport)
+                            @* ── Action row ── *@
+                            @if (canReport || canRate)
                             {
                                 <div class="d-flex flex-wrap gap-2 pt-2 border-top">
 
-                                    @* ── General Complaint button ── *@
-                                    @if (hasGeneralComplaint && generalComplaint is not null)
+                                    @* Rate Driver button *@
+                                    @if (canRate)
                                     {
-                                        @* Already filed — show read-only status pill *@
-                                        var pillColor = generalComplaint.Status switch
-                                        {
-                                            ComplaintStatus.Open => "secondary",
-                                            ComplaintStatus.InReview => "info",
-                                            ComplaintStatus.Escalated => "warning",
-                                            ComplaintStatus.Resolved => "success",
-                                            ComplaintStatus.Closed => "dark",
-                                            _ => "secondary"
-                                        };
-                                        <span class="btn btn-sm btn-outline-@pillColor disabled d-flex align-items-center gap-1"
-                                              title="Ticket: @generalComplaint.TicketReference">
-                                            <i class="bi bi-flag-fill"></i>
-                                            Complaint — @generalComplaint.Status
-                                            <span class="badge bg-@pillColor ms-1 text-white">@generalComplaint.TicketReference</span>
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <a asp-controller="RideHistory"
-                                           asp-action="FileComplaint"
-                                           asp-route-rideId="@ride.RideID"
-                                           asp-route-category="@((int)ComplaintCategory.DriverBehavior)"
-                                           class="btn btn-outline-danger btn-sm">
-                                            <i class="bi bi-flag-fill me-1"></i> File a Complaint
-                                        </a>
+                                        <button type="button"
+                                                class="btn btn-outline-warning btn-sm"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#rateModal-@ride.RideID">
+                                            <i class="bi bi-star-fill me-1"></i> Rate Driver
+                                        </button>
                                     }
 
-                                    @* ── Lost Item button ── *@
-                                    @if (hasLostItemComplaint && lostItemComplaint is not null)
+                                    @* General Complaint *@
+                                    @if (canReport)
                                     {
-                                        @* Already filed — show read-only status pill *@
-                                        var lostPillColor = lostItemComplaint.Status switch
+                                        @if (hasGeneralComplaint && generalComplaint is not null)
                                         {
-                                            ComplaintStatus.Open => "secondary",
-                                            ComplaintStatus.InReview => "info",
-                                            ComplaintStatus.Escalated => "warning",
-                                            ComplaintStatus.Resolved => "success",
-                                            ComplaintStatus.Closed => "dark",
-                                            _ => "secondary"
-                                        };
-                                        <span class="btn btn-sm btn-outline-@lostPillColor disabled d-flex align-items-center gap-1"
-                                              title="Ticket: @lostItemComplaint.TicketReference">
-                                            <i class="bi bi-bag-x-fill"></i>
-                                            Lost Item — @lostItemComplaint.Status
-                                            <span class="badge bg-@lostPillColor ms-1 text-white">@lostItemComplaint.TicketReference</span>
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <a asp-controller="RideHistory"
-                                           asp-action="FileComplaint"
-                                           asp-route-rideId="@ride.RideID"
-                                           asp-route-category="@((int)ComplaintCategory.LostItem)"
-                                           class="btn btn-outline-warning btn-sm">
-                                            <i class="bi bi-bag-x-fill me-1"></i> Report Lost Item
-                                        </a>
+                                            var pillColor = generalComplaint.Status switch
+                                            {
+                                                ComplaintStatus.Open      => "secondary",
+                                                ComplaintStatus.InReview  => "info",
+                                                ComplaintStatus.Escalated => "warning",
+                                                ComplaintStatus.Resolved  => "success",
+                                                ComplaintStatus.Closed    => "dark",
+                                                _                         => "secondary"
+                                            };
+                                            <span class="btn btn-sm btn-outline-@pillColor disabled d-flex align-items-center gap-1"
+                                                  title="Ticket: @generalComplaint.TicketReference">
+                                                <i class="bi bi-flag-fill"></i>
+                                                Complaint — @generalComplaint.Status
+                                                <span class="badge bg-@pillColor ms-1 text-white">@generalComplaint.TicketReference</span>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="RideHistory"
+                                               asp-action="FileComplaint"
+                                               asp-route-rideId="@ride.RideID"
+                                               asp-route-category="@((int)ComplaintCategory.DriverBehavior)"
+                                               class="btn btn-outline-danger btn-sm">
+                                                <i class="bi bi-flag-fill me-1"></i> File a Complaint
+                                            </a>
+                                        }
+
+                                        @* Lost Item *@
+                                        @if (hasLostItemComplaint && lostItemComplaint is not null)
+                                        {
+                                            var lostPillColor = lostItemComplaint.Status switch
+                                            {
+                                                ComplaintStatus.Open      => "secondary",
+                                                ComplaintStatus.InReview  => "info",
+                                                ComplaintStatus.Escalated => "warning",
+                                                ComplaintStatus.Resolved  => "success",
+                                                ComplaintStatus.Closed    => "dark",
+                                                _                         => "secondary"
+                                            };
+                                            <span class="btn btn-sm btn-outline-@lostPillColor disabled d-flex align-items-center gap-1"
+                                                  title="Ticket: @lostItemComplaint.TicketReference">
+                                                <i class="bi bi-bag-x-fill"></i>
+                                                Lost Item — @lostItemComplaint.Status
+                                                <span class="badge bg-@lostPillColor ms-1 text-white">@lostItemComplaint.TicketReference</span>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-controller="RideHistory"
+                                               asp-action="FileComplaint"
+                                               asp-route-rideId="@ride.RideID"
+                                               asp-route-category="@((int)ComplaintCategory.LostItem)"
+                                               class="btn btn-outline-warning btn-sm">
+                                                <i class="bi bi-bag-x-fill me-1"></i> Report Lost Item
+                                            </a>
+                                        }
                                     }
 
                                 </div>
@@ -230,7 +272,113 @@
                         </div>
                     </div>
                 </div>
+
+                @* ── Rate Driver Modal ── *@
+                @if (canRate)
+                {
+                    <div class="modal fade" id="rateModal-@ride.RideID" tabindex="-1"
+                         aria-labelledby="rateModalLabel-@ride.RideID" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 shadow">
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold" id="rateModalLabel-@ride.RideID">
+                                        <i class="bi bi-star-fill text-warning me-2"></i>Rate Your Driver
+                                        @if (driverName is not null)
+                                        {
+                                            <span class="fw-normal fs-6 text-muted ms-1">— @driverName</span>
+                                        }
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body pt-2">
+                                    <p class="text-muted small mb-3">
+                                        How was your ride from <strong>@ride.PickupLocation</strong>
+                                        to <strong>@ride.DropoffLocation</strong>?
+                                    </p>
+
+                                    <form asp-controller="RideHistory" asp-action="RateDriver" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="RideId" value="@ride.RideID" />
+
+                                        @* Star picker *@
+                                        <div class="mb-3 text-center">
+                                            <div class="star-picker d-inline-flex flex-row-reverse gap-1 fs-2"
+                                                 id="starPicker-@ride.RideID">
+                                                @for (int s = 5; s >= 1; s--)
+                                                {
+                                                    <label class="star-label"
+                                                           style="cursor:pointer;color:#ccc;"
+                                                           data-value="@s"
+                                                           title="@s star@(s > 1 ? "s" : "")">★</label>
+                                                }
+                                            </div>
+                                            <input type="hidden" name="Score"
+                                                   id="scoreInput-@ride.RideID" value="0" />
+                                            <div class="text-muted small mt-1"
+                                                 id="scoreLabel-@ride.RideID">Tap a star</div>
+                                        </div>
+
+                                        @* Comment *@
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold small">
+                                                Comment <span class="text-muted fw-normal">(optional)</span>
+                                            </label>
+                                            <textarea name="Comment" class="form-control form-control-sm"
+                                                      rows="3"
+                                                      placeholder="Anything you'd like to add…"></textarea>
+                                        </div>
+
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                    data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-warning btn-sm px-4"
+                                                    id="submitRating-@ride.RideID" disabled>
+                                                <i class="bi bi-send-fill me-1"></i> Submit Rating
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
             }
         </div>
     }
 </div>
+
+@section Scripts {
+<script>
+    document.querySelectorAll('.star-picker').forEach(function (picker) {
+        const rideId     = picker.id.replace('starPicker-', '');
+        const labels     = Array.from(picker.querySelectorAll('.star-label'));
+        const scoreInput = document.getElementById('scoreInput-' + rideId);
+        const scoreLabel = document.getElementById('scoreLabel-' + rideId);
+        const submitBtn  = document.getElementById('submitRating-' + rideId);
+        const starText   = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+
+        function highlight(val) {
+            labels.forEach(function (lbl) {
+                lbl.style.color = parseInt(lbl.dataset.value) <= val ? '#ffc107' : '#ccc';
+            });
+        }
+
+        labels.forEach(function (lbl) {
+            lbl.addEventListener('mouseenter', function () {
+                highlight(parseInt(lbl.dataset.value));
+            });
+            picker.addEventListener('mouseleave', function () {
+                highlight(parseInt(scoreInput.value) || 0);
+            });
+            lbl.addEventListener('click', function () {
+                const val = parseInt(lbl.dataset.value);
+                scoreInput.value      = val;
+                scoreLabel.textContent = starText[val] + ' (' + val + '/5)';
+                scoreLabel.className  = 'small mt-1 fw-semibold text-warning';
+                submitBtn.disabled    = false;
+                highlight(val);
+            });
+        });
+    });
+</script>
+}

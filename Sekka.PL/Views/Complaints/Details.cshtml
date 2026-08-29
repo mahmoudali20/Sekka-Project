@@ -1,8 +1,9 @@
 @model Sekka.BLL.ViewModels.ComplaintVM
+@using Sekka.DAL.Models
 @{
     ViewData["Title"] = "Complaint Details";
-    bool isResolved = Model.Status == Sekka.DAL.Models.ComplaintStatus.Resolved
-                   || Model.Status == Sekka.DAL.Models.ComplaintStatus.Closed;
+    bool isResolved = Model.Status == ComplaintStatus.Resolved
+                   || Model.Status == ComplaintStatus.Closed;
 }
 
 <div class="row justify-content-center">
@@ -40,25 +41,26 @@
                     @{
                         var priClass = Model.Priority switch
                         {
-                            Sekka.DAL.Models.ComplaintPriority.Critical => "danger",
-                            Sekka.DAL.Models.ComplaintPriority.High => "warning",
-                            Sekka.DAL.Models.ComplaintPriority.Medium => "info",
-                            _ => "secondary"
+                            ComplaintPriority.Critical => "danger",
+                            ComplaintPriority.High     => "warning",
+                            ComplaintPriority.Medium   => "info",
+                            _                          => "secondary"
                         };
                         var statusClass = Model.Status switch
                         {
-                            Sekka.DAL.Models.ComplaintStatus.Open => "primary",
-                            Sekka.DAL.Models.ComplaintStatus.InReview => "info",
-                            Sekka.DAL.Models.ComplaintStatus.Escalated => "warning",
-                            Sekka.DAL.Models.ComplaintStatus.Resolved => "success",
-                            Sekka.DAL.Models.ComplaintStatus.Closed => "secondary",
-                            _ => "secondary"
+                            ComplaintStatus.Open      => "primary",
+                            ComplaintStatus.InReview  => "info",
+                            ComplaintStatus.Escalated => "warning",
+                            ComplaintStatus.Resolved  => "success",
+                            ComplaintStatus.Closed    => "secondary",
+                            _                         => "secondary"
                         };
                     }
                     <span class="badge bg-@priClass">@Model.Priority</span>
                     <span class="badge bg-@statusClass ms-1">@Model.Status</span>
                 </span>
             </div>
+
             <div class="card-body">
                 <dl class="row">
                     <dt class="col-sm-3">Subject</dt>
@@ -70,8 +72,37 @@
                     <dt class="col-sm-3">Description</dt>
                     <dd class="col-sm-9">@Model.Description</dd>
 
-                    <dt class="col-sm-3">Trip ID</dt>
-                    <dd class="col-sm-9">@(Model.TripId?.ToString() ?? "—")</dd>
+                    @* ── Complainant (passenger) ── *@
+                    <dt class="col-sm-3">Submitted By</dt>
+                    <dd class="col-sm-9">
+                        @(Model.ComplainantName ?? Model.ComplainantId)
+                    </dd>
+
+                    @* ── Linked trip + driver ── *@
+                    @if (Model.TripId.HasValue)
+                    {
+                        <dt class="col-sm-3">Trip</dt>
+                        <dd class="col-sm-9">#@Model.TripId</dd>
+                    }
+
+                    @if (Model.DriverName is not null)
+                    {
+                        <dt class="col-sm-3">Driver</dt>
+                        <dd class="col-sm-9">@Model.DriverName</dd>
+                    }
+
+                    @* ── Assigned agent ── *@
+                    <dt class="col-sm-3">Assigned To</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.AssignedAgentName is not null)
+                        {
+                            <span class="text-success">@Model.AssignedAgentName</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Unassigned</span>
+                        }
+                    </dd>
 
                     <dt class="col-sm-3">Submitted</dt>
                     <dd class="col-sm-9">@Model.CreatedAt.ToString("dd MMM yyyy HH:mm")</dd>
@@ -102,14 +133,11 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="complaintId" value="@Model.Id" />
                         <select name="newStatus" class="form-select">
-                            @foreach (var status in Enum.GetValues<Sekka.DAL.Models.ComplaintStatus>())
+                            @foreach (var status in Enum.GetValues<ComplaintStatus>())
                             {
-                                if (status == Sekka.DAL.Models.ComplaintStatus.Resolved
-                                 || status == Sekka.DAL.Models.ComplaintStatus.Closed)
+                                if (status == ComplaintStatus.Resolved || status == ComplaintStatus.Closed)
                                     continue;
-                                <option value="@((int)status)" selected="@(Model.Status == status)">
-                                    @status
-                                </option>
+                                <option value="@((int)status)" selected="@(Model.Status == status)">@status</option>
                             }
                         </select>
                         <button type="submit" class="btn btn-primary text-nowrap">Save Status</button>

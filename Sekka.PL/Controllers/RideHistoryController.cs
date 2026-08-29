@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Sekka.BLL.Interfaces;
 using Sekka.BLL.ViewModels;
+using Sekka.BLL.ViewModels.TripVM;
 using Sekka.DAL.Models;
 
 namespace Sekka.PL.Controllers
@@ -52,6 +53,7 @@ namespace Sekka.PL.Controllers
 			return View(rides);
 		}
 
+		[HttpGet]
 		public async Task<IActionResult> FileComplaint(int rideId, int category = (int)ComplaintCategory.DriverBehavior)
 		{
 			var ride = await _rideService.GetRideByIdAsync(rideId);
@@ -75,6 +77,7 @@ namespace Sekka.PL.Controllers
 				Category = parsedCategory,
 				Priority = ComplaintPriority.Medium,
 				Status = ComplaintStatus.Open,
+				ComplainantId = _userManager.GetUserId(User)!
 			};
 
 			ViewBag.RideId = rideId;
@@ -86,6 +89,12 @@ namespace Sekka.PL.Controllers
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> FileComplaint(ComplaintVM vm)
 		{
+			var currentUserId = _userManager.GetUserId(User)!;
+			vm.ComplainantId = currentUserId;
+			ModelState.Remove(nameof(vm.ComplainantId));
+			vm.Status = ComplaintStatus.Open;
+			ModelState.Remove(nameof(vm.Status));
+
 			if (!ModelState.IsValid)
 			{
 				ViewBag.RideId = vm.TripId;
@@ -103,9 +112,6 @@ namespace Sekka.PL.Controllers
 				}
 			}
 
-			vm.ComplainantId = _userManager.GetUserId(User)!;
-			vm.Status = ComplaintStatus.Open;
-
 			try
 			{
 				var created = await _complaintService.CreateAsync(vm);
@@ -118,6 +124,26 @@ namespace Sekka.PL.Controllers
 			{
 				TempData["Info"] = $"You have already submitted a {vm.Category.ToString().Replace("_", " ")} report for this ride.";
 			}
+
+			return RedirectToAction(nameof(Index));
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> RateDriver(RateDriverVM model)
+		{
+			if (model.Score < 1 || model.Score > 5)
+			{
+				TempData["Error"] = "Please select a rating between 1 and 5 stars.";
+				return RedirectToAction(nameof(Index));
+			}
+
+			var passengerId = _userManager.GetUserId(User)!;
+			var result = await _rideService.RateDriverAsync(model, passengerId);
+
+			TempData[result.success ? "Success" : "Error"] = result.success
+				? "Thank you! Your rating has been submitted."
+				: result.error;
 
 			return RedirectToAction(nameof(Index));
 		}

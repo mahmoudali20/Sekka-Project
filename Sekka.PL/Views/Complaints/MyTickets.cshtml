@@ -1,4 +1,5 @@
 @model IEnumerable<Sekka.BLL.ViewModels.ComplaintVM>
+@using Sekka.DAL.Models
 @{
     ViewData["Title"] = "My Tickets";
 }
@@ -31,22 +32,22 @@ else
         {
             var priClass = c.Priority switch
             {
-                Sekka.DAL.Models.ComplaintPriority.Critical => "danger",
-                Sekka.DAL.Models.ComplaintPriority.High => "warning",
-                Sekka.DAL.Models.ComplaintPriority.Medium => "info",
-                _ => "secondary"
+                ComplaintPriority.Critical => "danger",
+                ComplaintPriority.High     => "warning",
+                ComplaintPriority.Medium   => "info",
+                _                          => "secondary"
             };
             var statusClass = c.Status switch
             {
-                Sekka.DAL.Models.ComplaintStatus.Open => "primary",
-                Sekka.DAL.Models.ComplaintStatus.InReview => "info",
-                Sekka.DAL.Models.ComplaintStatus.Escalated => "warning",
-                Sekka.DAL.Models.ComplaintStatus.Resolved => "success",
-                Sekka.DAL.Models.ComplaintStatus.Closed => "secondary",
-                _ => "secondary"
+                ComplaintStatus.Open      => "primary",
+                ComplaintStatus.InReview  => "info",
+                ComplaintStatus.Escalated => "warning",
+                ComplaintStatus.Resolved  => "success",
+                ComplaintStatus.Closed    => "secondary",
+                _                         => "secondary"
             };
-            bool isResolved = c.Status == Sekka.DAL.Models.ComplaintStatus.Resolved
-                           || c.Status == Sekka.DAL.Models.ComplaintStatus.Closed;
+            bool isResolved = c.Status == ComplaintStatus.Resolved
+                           || c.Status == ComplaintStatus.Closed;
 
             <div class="col-12">
                 <div class="card shadow-sm">
@@ -67,10 +68,22 @@ else
                             <dt class="col-sm-3">Category</dt>
                             <dd class="col-sm-9">@c.Category</dd>
 
-                            @if (c.TripId.HasValue)
+                            @* ── Complainant ── *@
+                            <dt class="col-sm-3">Submitted By</dt>
+                            <dd class="col-sm-9">
+                                @(c.ComplainantName ?? c.ComplainantId)
+                            </dd>
+
+                            @* ── Driver ── *@
+                            @if (c.DriverName is not null)
                             {
-                                <dt class="col-sm-3">Trip ID</dt>
-                                <dd class="col-sm-9">@c.TripId</dd>
+                                <dt class="col-sm-3">Driver</dt>
+                                <dd class="col-sm-9">@c.DriverName</dd>
+                            }
+                            else if (c.TripId.HasValue)
+                            {
+                                <dt class="col-sm-3">Trip</dt>
+                                <dd class="col-sm-9">#@c.TripId</dd>
                             }
 
                             @if (!string.IsNullOrEmpty(c.ResolutionNotes))
@@ -91,14 +104,11 @@ else
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="complaintId" value="@c.Id" />
                                         <select name="newStatus" class="form-select form-select-sm">
-                                            @foreach (var status in Enum.GetValues<Sekka.DAL.Models.ComplaintStatus>())
+                                            @foreach (var status in Enum.GetValues<ComplaintStatus>())
                                             {
-                                                if (status == Sekka.DAL.Models.ComplaintStatus.Resolved
-                                                 || status == Sekka.DAL.Models.ComplaintStatus.Closed)
+                                                if (status == ComplaintStatus.Resolved || status == ComplaintStatus.Closed)
                                                     continue;
-                                                <option value="@((int)status)" selected="@(c.Status == status)">
-                                                    @status
-                                                </option>
+                                                <option value="@((int)status)" selected="@(c.Status == status)">@status</option>
                                             }
                                         </select>
                                         <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap">
@@ -126,9 +136,7 @@ else
                                         <button type="submit" class="btn btn-sm btn-success">Submit Resolution</button>
                                         <button type="button" class="btn btn-sm btn-outline-secondary"
                                                 data-bs-toggle="collapse"
-                                                data-bs-target="#resolve-@c.Id">
-                                            Cancel
-                                        </button>
+                                                data-bs-target="#resolve-@c.Id">Cancel</button>
                                     </form>
                                 </div>
 

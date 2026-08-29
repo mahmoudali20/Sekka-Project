@@ -3,12 +3,11 @@
 
 @{
     bool isLostItem = Model.Category == ComplaintCategory.LostItem;
-    string pageTitle = isLostItem ? "Report a Lost Item" : "File a Complaint";
-    string submitLabel = isLostItem ? "Submit Lost-Item Report" : "Submit Complaint";
-    string iconClass = isLostItem ? "bi-bag-x-fill text-warning" : "bi-flag-fill text-danger";
-    ViewData["Title"] = pageTitle;
+    string pageTitle    = isLostItem ? "Report a Lost Item" : "File a Complaint";
+    string submitLabel  = isLostItem ? "Submit Lost-Item Report" : "Submit Complaint";
+    string iconClass    = isLostItem ? "bi-bag-x-fill text-warning" : "bi-flag-fill text-danger";
+    ViewData["Title"]   = pageTitle;
 
-    // Filter category options depending on mode
     var filteredCategories = Html.GetEnumSelectList<ComplaintCategory>()
         .Where(item => isLostItem
             ? item.Value == ((int)ComplaintCategory.LostItem).ToString()
@@ -36,7 +35,7 @@
         </div>
     </div>
 
-    @* Category switcher tabs — pass category as int so model binding resolves to the enum *@
+    @* Category switcher tabs *@
     <div class="d-flex gap-2 mb-4">
         <a asp-controller="RideHistory"
            asp-action="FileComplaint"
@@ -56,20 +55,28 @@
 
     <div class="card border-0 shadow-sm rounded-3">
         <div class="card-body p-4">
+
+            @* Show validation errors so the user can see why submit failed *@
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small mb-3"></div>
+
             <form asp-controller="RideHistory" asp-action="FileComplaint" method="post">
                 @Html.AntiForgeryToken()
 
-                @* Hidden fields — TripId and Status are set by the controller, not the user *@
+                @* TripId — needed by the controller to check duplicates *@
                 <input type="hidden" asp-for="TripId" />
-                <input type="hidden" asp-for="Status" />
-                <input type="hidden" asp-for="ComplainantId" />
+
+                @* Status & ComplainantId are REMOVED from the form.
+                   The controller stamps both server-side, so there is
+                   nothing for [Required] to fail on and nothing for a
+                   user to tamper with. *@
 
                 @* Category *@
                 <div class="mb-3">
                     <label asp-for="Category" class="form-label fw-semibold">Category</label>
                     @if (isLostItem)
                     {
-                        <input type="hidden" asp-for="Category" value="@((int)ComplaintCategory.LostItem)" />
+                        @* Single hidden input — asp-for serialises the enum correctly *@
+                        <input type="hidden" asp-for="Category" />
                         <select class="form-select" disabled>
                             <option selected>Lost Item</option>
                         </select>
@@ -84,10 +91,10 @@
                     <span asp-validation-for="Category" class="text-danger small"></span>
                 </div>
 
-                @* Priority — hidden and defaulted to Medium for lost-item reports *@
+                @* Priority *@
                 @if (isLostItem)
                 {
-                    <input type="hidden" asp-for="Priority" value="@((int)ComplaintPriority.Medium)" />
+                    <input type="hidden" asp-for="Priority" />
                 }
                 else
                 {
@@ -121,8 +128,8 @@
                               class="form-control"
                               rows="5"
                               placeholder="@(isLostItem
-                                                      ? "Describe the item, approximate time you noticed it missing, and any other details that may help us locate it..."
-                                                      : "Please describe the incident in detail so our team can investigate...")"></textarea>
+                                  ? "Describe the item, approximate time you noticed it missing, and any other details that may help us locate it..."
+                                  : "Please describe the incident in detail so our team can investigate...")"></textarea>
                     <div class="d-flex justify-content-between">
                         <span asp-validation-for="Description" class="text-danger small"></span>
                         <small class="text-muted">Max 2000 characters</small>
