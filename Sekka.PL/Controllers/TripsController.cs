@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Sekka.BLL.Classes;
 using Sekka.BLL.Interfaces;
-using Sekka.BLL.ViewModels.DriverVM;
 using Sekka.BLL.ViewModels.TripVM;
 using System.Security.Claims;
 
@@ -11,7 +9,9 @@ namespace Sekka.PL.Controllers
     [Authorize]
     public class TripsController : Controller
     {
+
         private readonly ITripService _tripService;
+
         public TripsController(ITripService tripService)
         {
             _tripService = tripService;
@@ -21,10 +21,10 @@ namespace Sekka.PL.Controllers
         public async Task<IActionResult> Index()
         {
             var rides = await _tripService.GetAllRidesAsync();
+
             return View(rides);
         }
 
-        // Passenger
         [HttpGet]
         [Authorize(Roles = "Passenger")]
         public IActionResult Book()
@@ -34,12 +34,11 @@ namespace Sekka.PL.Controllers
 
         [HttpPost]
         [Authorize(Roles = "Passenger")]
-        [ValidateAntiForgeryToken]  
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Book(BookRideVM brv)
         {
             if (!ModelState.IsValid)
                 return View(brv);
-
 
             brv.PassengerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -51,8 +50,8 @@ namespace Sekka.PL.Controllers
                 return View(brv);
             }
 
-            ViewBag.SuccessMessage = "Ride requested successfully! Waiting for a driver...";
-            return RedirectToAction("Index", "Home");
+            TempData["SuccessMessage"] = "Ride requested successfully! Waiting for a driver...";
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
@@ -61,19 +60,17 @@ namespace Sekka.PL.Controllers
         public async Task<IActionResult> Cancel(int rideId, string reason)
         {
             var passengerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _tripService.CancelRideAsync(rideId, passengerId, reason);
+
+            var result = await _tripService.CancelRideAsync(rideId, passengerId!, reason);
 
             if (!result.success)
-                ViewBag.ErrorMessage = result.error;
+                TempData["ErrorMessage"] = result.error;
+
             else
-                ViewBag.SuccessMessage = "Ride cancelled successfully.";
+                TempData["SuccessMessage"] = "Ride cancelled successfully.";
 
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction(nameof(Index));
         }
-
-
-        // Driver
-        
 
         [HttpPost]
         [Authorize(Roles = "Driver")]
@@ -81,12 +78,17 @@ namespace Sekka.PL.Controllers
         public async Task<IActionResult> Accept(int rideId)
         {
             var driverUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _tripService.AcceptRideAsync(rideId, driverUserId);
 
-            if (!result.success) TempData["ErrorMessage"] = result.error;
-            else TempData["SuccessMessage"] = "Ride accepted! Head to the pickup location.";
+            var result = await _tripService.AcceptRideAsync(rideId, driverUserId!);
 
-            return RedirectToAction("Index", "Home");
+            if (!result.success)
+                TempData["ErrorMessage"] = result.error;
+
+            else
+                TempData["SuccessMessage"] = "Ride accepted! Head to the pickup location.";
+
+            return RedirectToAction(
+                nameof(Index));
         }
 
         [HttpPost]
@@ -95,12 +97,16 @@ namespace Sekka.PL.Controllers
         public async Task<IActionResult> Start(int rideId)
         {
             var driverUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _tripService.StartRideAsync(rideId, driverUserId);
 
-            if (!result.success) TempData["ErrorMessage"] = result.error;
-            else TempData["SuccessMessage"] = "Ride started! Have a safe trip.";
+            var result = await _tripService.StartRideAsync(rideId, driverUserId!);
 
-            return RedirectToAction("Index", "Home");
+            if (!result.success)
+                TempData["ErrorMessage"] = result.error;
+
+            else
+                TempData["SuccessMessage"] = "Ride started! Have a safe trip.";
+
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
@@ -109,12 +115,17 @@ namespace Sekka.PL.Controllers
         public async Task<IActionResult> Complete(int rideId, decimal actualFare)
         {
             var driverUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _tripService.CompleteRideAsync(rideId, driverUserId, actualFare);
 
-            if (!result.success) TempData["ErrorMessage"] = result.error;
-            else TempData["SuccessMessage"] = "Ride completed successfully!";
+            var result = await _tripService.CompleteRideAsync(rideId, driverUserId!, actualFare);
 
-            return RedirectToAction("Index", "Home");
+            if (!result.success)
+
+                TempData["ErrorMessage"] = result.error;
+
+            else
+                TempData["SuccessMessage"] = "Ride completed successfully!";
+
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
@@ -125,16 +136,22 @@ namespace Sekka.PL.Controllers
             if (!ModelState.IsValid)
             {
                 TempData["ErrorMessage"] = "Invalid rating data.";
-                return RedirectToAction("Index", "Home");
+                return RedirectToAction(nameof(Index));
             }
 
             var passengerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _tripService.RateDriverAsync(model, passengerId);
 
-            if (!result.success) TempData["ErrorMessage"] = result.error;
-            else TempData["SuccessMessage"] = "Thank you! Your rating has been submitted.";
+            var result = await _tripService.RateDriverAsync(model, passengerId!);
 
-            return RedirectToAction("Index", "Home");
+
+            if (!result.success)
+                TempData["ErrorMessage"] = result.error;
+
+            else
+                TempData["SuccessMessage"] = "Thank you! Your rating has been submitted.";
+
+            return RedirectToAction(nameof(Index));
         }
     }
 }
+

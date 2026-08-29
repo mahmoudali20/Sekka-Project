@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Identity;
 using Sekka.BLL;
+using Sekka.BLL.Interfaces;
 using Sekka.DAL;
 using Sekka.DAL.Context;
 using Sekka.DAL.Models;
+using Sekka.PL.Hubs;
+using Sekka.PL.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,8 +20,8 @@ builder.Services.AddAuthentication().AddGoogle(options =>
         options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
     });
 
-
-
+builder.Services.AddScoped<ITripNotificationService, TripNotificationService>();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -55,5 +58,7 @@ using (var scope = app.Services.CreateScope())
         userManager,
         logger);
 }
+
+app.MapHub<TripHub>("/hubs/trip");
 
 app.Run();
