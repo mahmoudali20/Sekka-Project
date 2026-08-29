@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sekka.DAL.Context;
 
@@ -11,9 +12,11 @@ using Sekka.DAL.Context;
 namespace Sekka.DAL.Migrations
 {
     [DbContext(typeof(SekkaDbContext))]
-    partial class SekkaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260818215311_init")]
+    partial class init
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -261,68 +264,7 @@ namespace Sekka.DAL.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Cars", (string)null);
-                });
-
-            modelBuilder.Entity("Sekka.DAL.Models.Complaint", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AssignedAgentId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Category")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ComplainantId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Priority")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ResolutionNotes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("ResolvedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TargetUserId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TicketReference")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("TripId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TripId", "Category")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Complaints_TripId_Category")
-                        .HasFilter("[TripId] IS NOT NULL");
-
-                    b.ToTable("Complaints");
+                    b.ToTable("Cars");
                 });
 
             modelBuilder.Entity("Sekka.DAL.Models.Driver", b =>
@@ -362,7 +304,7 @@ namespace Sekka.DAL.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Drivers", (string)null);
+                    b.ToTable("Drivers");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

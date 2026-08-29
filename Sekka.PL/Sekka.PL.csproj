@@ -21,4 +21,9 @@
     <ProjectReference Include="..\Sekka.BLL\Sekka.BLL.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Views\Complaints\" />
+    <Folder Include="Views\RideHistory\" />
+  </ItemGroup>
+
 </Project>

@@ -6,297 +6,313 @@ using Sekka.DAL.Repositories.Interfaces;
 
 namespace Sekka.BLL.Classes
 {
-    public class TripService : ITripService
-    {
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly ITripNotificationService _notificationService;
-        public TripService(IUnitOfWork unitOfWork, ITripNotificationService notificationService)
-        {
-            _unitOfWork = unitOfWork;
-            _notificationService = notificationService;
-        }
+	public class TripService : ITripService
+	{
+		private readonly IUnitOfWork _unitOfWork;
+		private readonly ITripNotificationService _notificationService;
+
+		public TripService(IUnitOfWork unitOfWork, ITripNotificationService notificationService)
+		{
+			_unitOfWork = unitOfWork;
+			_notificationService = notificationService;
+		}
 
-        public async Task<Result<Ride>> BookRideAsync(BookRideVM model, CancellationToken ct = default)
-        {
-            bool hasActiveRide = await _unitOfWork.GetRepo<Ride, int>().AnyAsync(r =>
-                                                                                            r.PassengerId == model.PassengerId &&
-                                                                                            r.Status != RideStatus.Completed &&
-                                                                                            r.Status != RideStatus.Cancelled,
-                                                                                        ct);
+		public async Task<Result<Ride>> BookRideAsync(BookRideVM model, CancellationToken ct = default)
+		{
+			bool hasActiveRide = await _unitOfWork.GetRepo<Ride, int>().AnyAsync(r =>
+				r.PassengerId == model.PassengerId &&
+				r.Status != RideStatus.Completed &&
+				r.Status != RideStatus.Cancelled, ct);
 
-            if (hasActiveRide) return Result<Ride>.Fail("You already have an active ride.");
+			if (hasActiveRide) return Result<Ride>.Fail("You already have an active ride.");
 
-            var passenger = await _unitOfWork.GetRepo<ApplicationUser, string>().FirstOrDefaultAsync(p => p.Id == model.PassengerId);
+			var passenger = await _unitOfWork.GetRepo<ApplicationUser, string>().FirstOrDefaultAsync(p => p.Id == model.PassengerId);
 
-            var ride = new Ride
-            {
-                PassengerId = model.PassengerId,
-                PickupLocation = model.PickupLocation,
-                PickupLat = model.PickupLat,
-                PickupLng = model.PickupLng,
+			var ride = new Ride
+			{
+				PassengerId = model.PassengerId,
+				PickupLocation = model.PickupLocation,
+				PickupLat = model.PickupLat,
+				PickupLng = model.PickupLng,
+				DropoffLocation = model.DropoffLocation,
+				DropoffLat = model.DropoffLat,
+				DropoffLng = model.DropoffLng,
+				DistanceInKm = model.DistanceInKm,
+				EstimatedFare = model.EstimatedFare,
+				ScheduledTime = model.ScheduledTime,
+				Status = RideStatus.Requested,
+				RequestTime = DateTime.UtcNow,
+				IsCancelled = false
+			};
 
-                DropoffLocation = model.DropoffLocation,
-                DropoffLat = model.DropoffLat,
-                DropoffLng = model.DropoffLng,
+			_unitOfWork.GetRepo<Ride, int>().AddAsync(ride);
+			var saved = await _unitOfWork.SaveChangesAsync();
 
-                DistanceInKm = model.DistanceInKm,
+			if (saved <= 0)
+				return Result<Ride>.Fail("Failed to book the ride.");
 
-                EstimatedFare = model.EstimatedFare,
+			ride.Passenger = passenger;
 
-                ScheduledTime = model.ScheduledTime,
+			await _notificationService.NotifyNewRideAsync(ride);
+			return Result<Ride>.OK(ride);
+		}
 
-                Status = RideStatus.Requested,
+		public async Task<Result> CancelRideAsync(int rideId, string passengerId, string reason, CancellationToken ct = default)
+		{
+			var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);
 
-                RequestTime = DateTime.UtcNow,
+			if (ride == null)
+				return Result.Fail("Ride not found.");
 
-                IsCancelled = false
-            };
+			if (ride.PassengerId != passengerId)
+				return Result.Fail("Unauthorized to cancel this ride.", ResultKind.Forbidden);
 
-            _unitOfWork.GetRepo<Ride, int>().AddAsync(ride);
+			if (ride.Status == RideStatus.Started || ride.Status == RideStatus.Completed)
+				return Result.Fail("Cannot cancel a ride that is already in progress or completed.");
 
-            var saved = await _unitOfWork.SaveChangesAsync();
-            if (saved <= 0)
-                return Result<Ride>.Fail("Failed to book the ride.");
+			string? driverUserId = null;
 
-            ride.Passenger = passenger;
+			if (ride.DriverId.HasValue)
+			{
+				var driver = await _unitOfWork.GetRepo<Driver, int>().GetByIdAsync(ride.DriverId.Value, ct);
+				driverUserId = driver?.UserId;
+				ride.Driver = driver;
+			}
 
-            await _notificationService.NotifyNewRideAsync(ride);
-            return Result<Ride>.OK(ride);
-        }
+			ride.IsCancelled = true;
+			ride.CancelReason = reason;
+			ride.Status = RideStatus.Cancelled;
 
-        public async Task<Result> CancelRideAsync(int rideId, string passengerId, string reason, CancellationToken ct = default)
-        {
-            var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);
+			_unitOfWork.GetRepo<Ride, int>().Update(ride);
+			var saved = await _unitOfWork.SaveChangesAsync();
 
-            if (ride == null)
-                return Result.Fail("Ride not found.");
+			if (saved <= 0)
+				return Result.Fail("Failed to cancel ride.");
 
-            if (ride.PassengerId != passengerId)
-                return Result.Fail("Unauthorized to cancel ride.", ResultKind.Forbidden);
+			await _notificationService.NotifyRideCancelledAsync(ride, driverUserId);
+			return Result.OK();
+		}
 
-            if (ride.Status == RideStatus.Started || ride.Status == RideStatus.Completed)
-                return Result.Fail("Cannot cancel a ride that is already in progress or completed.");
+		public async Task<Result> AcceptRideAsync(int rideId, string driverUserId, CancellationToken ct = default)
+		{
+			var driver = await _unitOfWork.GetRepo<Driver, int>().FirstOrDefaultAsync(d => d.UserId == driverUserId, false, ct);
 
-            string? driverUserId = null;
+			if (driver == null)
+				return Result.Fail("Driver profile not found.");
 
-            if (ride.DriverId.HasValue)
-            {
-                var driver = await _unitOfWork.GetRepo<Driver, int>().GetByIdAsync(ride.DriverId.Value, ct);
-                driverUserId = driver?.UserId;
-                ride.Driver = driver;
-            }
+			var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);
 
-            ride.IsCancelled = true;
-            ride.CancelReason = reason;
-            ride.Status = RideStatus.Cancelled;
+			if (ride == null)
+				return Result.Fail("Ride not found.");
 
-            _unitOfWork.GetRepo<Ride, int>().Update(ride);
+			if (ride.Status != RideStatus.Requested)
+				return Result.Fail("Ride is no longer available.", ResultKind.Conflict);
 
-            var saved = await _unitOfWork.SaveChangesAsync();
-            if (saved <= 0)
-                return Result.Fail("Failed to cancel ride.");
+			ride.DriverId = driver.Id;
+			ride.Status = RideStatus.Accepted;
 
-            await _notificationService.NotifyRideCancelledAsync(ride, driverUserId);
-            return Result.OK();
-        }
+			_unitOfWork.GetRepo<Ride, int>().Update(ride);
 
-        public async Task<Result> AcceptRideAsync(int rideId, string driverUserId, CancellationToken ct = default)
-        {
-            var driver = await _unitOfWork.GetRepo<Driver, int>().FirstOrDefaultAsync(d => d.UserId == driverUserId, false, ct);
+			var saved = await _unitOfWork.SaveChangesAsync();
 
-            if (driver == null)
-                return Result.Fail("Driver profile not found.");
+			if (saved <= 0)
+				return Result.Fail("Failed to accept ride.");
 
-            var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);
+			var user = await _unitOfWork.GetRepo<ApplicationUser, string>().GetByIdAsync(driver.UserId, ct);
 
-            if (ride == null)
-                return Result.Fail("Ride not found.");
+			Car? car = null;
+			if (driver.CarId > 0)
+				car = await _unitOfWork.GetRepo<Car, int>().GetByIdAsync(driver.CarId, ct);
 
-            if (ride.Status != RideStatus.Requested)
-                return Result.Fail("Ride is no longer available.", ResultKind.Conflict);
+			driver.User = user;
+			driver.Car = car;
+			ride.Driver = driver;
 
-            ride.DriverId = driver.Id;
+			await _notificationService.NotifyRideAcceptedAsync(ride, driver);
 
-            ride.Status = RideStatus.Accepted;
+			return Result.OK();
+		}
 
-            _unitOfWork.GetRepo<Ride, int>().Update(ride);
+		public async Task<Result> StartRideAsync(int rideId, string driverUserId, CancellationToken ct = default)
+		{
+			var driver = await _unitOfWork.GetRepo<Driver, int>().FirstOrDefaultAsync(d => d.UserId == driverUserId, false, ct);
 
-            var saved = await _unitOfWork.SaveChangesAsync();
+			if (driver == null)
+				return Result.Fail("Driver profile not found.");
 
-            if (saved <= 0)
-                return Result.Fail("Failed to accept ride.");
+			var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);
 
+			if (ride == null)
+				return Result.Fail("Ride not found.");
 
-            var user = await _unitOfWork.GetRepo<ApplicationUser, string>().GetByIdAsync(driver.UserId, ct);
+			if (ride.DriverId != driver.Id)
+				return Result.Fail("You are not authorized to start this ride.", ResultKind.Forbidden);
 
-            Car? car = null;
-            if (driver.CarId > 0)
-                car = await _unitOfWork.GetRepo<Car, int>().GetByIdAsync(driver.CarId, ct);
+			if (ride.Status != RideStatus.Accepted && ride.Status != RideStatus.DriverArrived)
+				return Result.Fail("Invalid ride status to start.");
 
-            driver.User = user;
-            driver.Car = car;
-            ride.Driver = driver;
+			ride.Status = RideStatus.Started;
+			ride.StartTime = DateTime.UtcNow;
 
-            await _notificationService.NotifyRideAcceptedAsync(ride, driver);
+			_unitOfWork.GetRepo<Ride, int>().Update(ride);
 
-            return Result.OK();
-        }
+			var saved = await _unitOfWork.SaveChangesAsync();
 
-        public async Task<Result> StartRideAsync(int rideId, string driverUserId, CancellationToken ct = default)
-        {
-            var driver = await _unitOfWork.GetRepo<Driver, int>().FirstOrDefaultAsync(d => d.UserId == driverUserId, false, ct);
+			if (saved <= 0)
+				return Result.Fail("Failed to start ride.");
 
-            if (driver == null)
-                return Result.Fail("Driver profile not found.");
+			ride.Driver = driver;
 
-            var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);
+			await _notificationService.NotifyRideStartedAsync(ride);
 
-            if (ride == null)
-                return Result.Fail("Ride not found.");
+			return Result.OK();
+		}
 
-            if (ride.DriverId != driver.Id)
-                return Result.Fail("You are not authorized to start this ride.", ResultKind.Forbidden);
+		public async Task<Result> CompleteRideAsync(int rideId, string driverUserId, decimal actualFare, CancellationToken ct = default)
+		{
+			var driver = await _unitOfWork.GetRepo<Driver, int>().FirstOrDefaultAsync(d => d.UserId == driverUserId, false, ct);
 
-            if (ride.Status != RideStatus.Accepted && ride.Status != RideStatus.DriverArrived)
-                return Result.Fail("Invalid ride status to start.");
+			if (driver == null)
+				return Result.Fail("Driver profile not found.");
 
-            ride.Status = RideStatus.Started;
+			var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);
 
-            ride.StartTime = DateTime.UtcNow;
+			if (ride == null)
+				return Result.Fail("Ride not found.");
 
-            _unitOfWork.GetRepo<Ride, int>().Update(ride);
+			if (ride.DriverId != driver.Id)
+				return Result.Fail("You are not authorized to complete this ride.", ResultKind.Forbidden);
 
-            var saved = await _unitOfWork.SaveChangesAsync();
+			if (ride.Status != RideStatus.Started)
+				return Result.Fail("Ride must be started before it can be completed.");
 
-            if (saved <= 0)
-                return Result.Fail("Failed to start ride.");
+			ride.Status = RideStatus.Completed;
+			ride.EndTime = DateTime.UtcNow;
+			ride.ActualFare = actualFare;
+			driver.IsAvailable = true;
 
+			_unitOfWork.GetRepo<Ride, int>().Update(ride);
+			_unitOfWork.GetRepo<Driver, int>().Update(driver);
 
-            ride.Driver = driver;
+			var saved = await _unitOfWork.SaveChangesAsync();
 
+			if (saved <= 0)
+				return Result.Fail("Failed to complete ride.");
 
-            await _notificationService.NotifyRideStartedAsync(ride);
+			ride.Driver = driver;
 
-            return Result.OK();
-        }
+			await _notificationService.NotifyRideCompletedAsync(ride);
 
-        public async Task<Result> CompleteRideAsync(int rideId, string driverUserId, decimal actualFare, CancellationToken ct = default)
-        {
-            var driver = await _unitOfWork.GetRepo<Driver, int>().FirstOrDefaultAsync(d => d.UserId == driverUserId, false, ct);
+			return Result.OK();
+		}
 
-            if (driver == null)
-                return Result.Fail("Driver profile not found.");
+		public async Task<IEnumerable<Ride>> GetAllRidesAsync(CancellationToken ct = default)
+		{
+			var rides = (await _unitOfWork.GetRepo<Ride, int>().GetAllAsync(false, ct))?.ToList() ?? new List<Ride>();
+			var drivers = (await _unitOfWork.DriverRepository.GetAllWithUserAsync(ct))?.ToList() ?? new List<Driver>();
+			var cars = (await _unitOfWork.GetRepo<Car, int>().GetAllAsync(false, ct))?.ToList() ?? new List<Car>();
+			var ratings = (await _unitOfWork.GetRepo<Rating, int>().GetAllAsync(false, ct))?.ToList() ?? new List<Rating>();
+			var users = (await _unitOfWork.GetRepo<ApplicationUser, string>().GetAllAsync(false, ct))?.ToList() ?? new List<ApplicationUser>();
 
-            var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);
+			foreach (var ride in rides)
+			{
+				ride.Passenger = users.FirstOrDefault(u => u.Id == ride.PassengerId);
 
-            if (ride == null)
-                return Result.Fail("Ride not found.");
+				if (ride.DriverId.HasValue)
+				{
+					ride.Driver = drivers.FirstOrDefault(d => d.Id == ride.DriverId.Value);
 
-            if (ride.DriverId != driver.Id)
-                return Result.Fail("You are not authorized to complete this ride.", ResultKind.Forbidden);
+					if (ride.Driver != null)
+					{
+						ride.Driver.Car = cars.FirstOrDefault(c => c.Id == ride.Driver.CarId);
+						ride.Driver.User = users.FirstOrDefault(u => u.Id == ride.Driver.UserId);
+					}
+				}
 
-            if (ride.Status != RideStatus.Started)
-                return Result.Fail("Ride must be started before it can be completed.");
+				ride.Rating = ratings.FirstOrDefault(r => r.RideId == ride.RideID);
+			}
 
-            ride.Status = RideStatus.Completed;
+			return rides.OrderByDescending(r => r.RequestTime);
+		}
 
-            ride.EndTime = DateTime.UtcNow;
+		// Returns all rides for a specific passenger, newest first.
+		public async Task<IEnumerable<Ride>> GetByPassengerAsync(string passengerId, CancellationToken ct = default)
+		{
+			var allRides = (await _unitOfWork.GetRepo<Ride, int>()
+							   .GetAllAsync(tracking: false, ct))
+						   ?.Where(r => r.PassengerId == passengerId)
+						   .ToList()
+						   ?? new List<Ride>();
 
-            ride.ActualFare = actualFare;
+			if (!allRides.Any())
+				return allRides;
 
-            driver.IsAvailable = true;
+			var rideIds = allRides.Select(r => r.RideID).ToHashSet();
+			var driverIds = allRides.Where(r => r.DriverId.HasValue)
+									 .Select(r => r.DriverId!.Value)
+									 .Distinct()
+									 .ToHashSet();
 
-            _unitOfWork.GetRepo<Ride, int>().Update(ride);
+			var drivers = (await _unitOfWork.DriverRepository.GetAllWithUserAsync(ct))
+						  ?.Where(d => driverIds.Contains(d.Id))
+						  .ToList()
+						  ?? new List<Driver>();
 
-            _unitOfWork.GetRepo<Driver, int>().Update(driver);
+			var ratings = (await _unitOfWork.GetRepo<Rating, int>().GetAllAsync(false, ct))
+						  ?.Where(r => rideIds.Contains(r.RideId))
+						  .ToList()
+						  ?? new List<Rating>();
 
-            var saved = await _unitOfWork.SaveChangesAsync();
+			foreach (var ride in allRides)
+			{
+				ride.Rating = ratings.FirstOrDefault(r => r.RideId == ride.RideID);
 
-            if (saved <= 0)
-                return Result.Fail("Failed to complete ride.");
+				if (ride.DriverId.HasValue)
+					ride.Driver = drivers.FirstOrDefault(d => d.Id == ride.DriverId.Value);
+			}
 
-            ride.Driver = driver;
+			return allRides.OrderByDescending(r => r.RequestTime);
+		}
 
+		// Returns a single ride by ID, with Rating hydrated.
+		public async Task<Ride?> GetRideByIdAsync(int rideId, CancellationToken ct = default)
+		{
+			var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);
+			if (ride is null) return null;
 
-            await _notificationService.NotifyRideCompletedAsync(ride);
+			var rating = await _unitOfWork.GetRepo<Rating, int>()
+							 .FirstOrDefaultAsync(r => r.RideId == rideId, tracking: false, ct);
 
-            return Result.OK();
-        }
+			ride.Rating = rating;
+			return ride;
+		}
 
-        public async Task<IEnumerable<Ride>> GetAllRidesAsync(CancellationToken ct = default)
-        {
-            var rides = (await _unitOfWork.GetRepo<Ride, int>().GetAllAsync(false, ct))?.ToList() ?? new List<Ride>();
+		public async Task<Result> RateDriverAsync(RateDriverVM model, string passengerId, CancellationToken ct = default)
+		{
+			var ride = await _unitOfWork.GetRepo<Ride, int>().FirstOrDefaultAsync(r => r.RideID == model.RideId, true, ct);
 
-            var drivers = (await _unitOfWork.DriverRepository.GetAllWithUserAsync(ct))?.ToList() ?? new List<Driver>();
+			if (ride == null) return Result.Fail("Ride not found.");
+			if (ride.PassengerId != passengerId) return Result.Fail("Unauthorized to rate this ride.", ResultKind.Forbidden);
+			if (ride.Status != RideStatus.Completed) return Result.Fail("You can only rate completed rides.");
+			if (!ride.DriverId.HasValue) return Result.Fail("No driver assigned to this ride.");
 
-            var cars = (await _unitOfWork.GetRepo<Car, int>().GetAllAsync(false, ct))?.ToList() ?? new List<Car>();
+			bool alreadyRated = await _unitOfWork.GetRepo<Rating, int>().AnyAsync(r => r.RideId == model.RideId, ct);
+			if (alreadyRated) return Result.Fail("You have already rated this ride.");
 
-            var ratings = (await _unitOfWork.GetRepo<Rating, int>().GetAllAsync(false, ct))?.ToList() ?? new List<Rating>();
+			var rating = new Rating
+			{
+				RideId = model.RideId,
+				PassengerId = passengerId,
+				DriverId = ride.DriverId.Value,
+				Score = model.Score,
+				Comment = model.Comment,
+				CreatedAt = DateTime.UtcNow
+			};
 
-            var users = (await _unitOfWork.GetRepo<ApplicationUser, string>().GetAllAsync(false, ct))?.ToList() ?? new List<ApplicationUser>();
+			_unitOfWork.GetRepo<Rating, int>().AddAsync(rating);
+			var saved = await _unitOfWork.SaveChangesAsync();
 
-            foreach (var ride in rides)
-            {
-                ride.Passenger = users.FirstOrDefault(u => u.Id == ride.PassengerId);
-
-
-                if (ride.DriverId.HasValue)
-                {
-                    ride.Driver = drivers.FirstOrDefault(d => d.Id == ride.DriverId.Value);
-
-                    if (ride.Driver != null)
-                    {
-                        ride.Driver.Car = cars.FirstOrDefault(c => c.Id == ride.Driver.CarId);
-
-                        ride.Driver.User = users.FirstOrDefault(u => u.Id == ride.Driver.UserId);
-                    }
-                }
-
-                ride.Rating = ratings.FirstOrDefault(r => r.RideId == ride.RideID);
-            }
-
-            return rides.OrderByDescending(r => r.RequestTime);
-        }
-
-        public async Task<Result> RateDriverAsync(RateDriverVM model, string passengerId, CancellationToken ct = default)
-        {
-            var ride = await _unitOfWork.GetRepo<Ride, int>().FirstOrDefaultAsync(r => r.RideID == model.RideId, true, ct);
-
-            if (ride == null)
-                return Result.Fail("Ride not found.");
-
-            if (ride.PassengerId != passengerId)
-                return Result.Fail("Unauthorized to rate this ride.", ResultKind.Forbidden);
-
-            if (ride.Status != RideStatus.Completed)
-                return Result.Fail("You can only rate completed rides.");
-
-            bool alreadyRated =
-                await _unitOfWork.GetRepo<Rating, int>().AnyAsync(r => r.RideId == model.RideId, ct);
-
-            if (alreadyRated)
-                return Result.Fail("You have already rated this ride.");
-
-            var rating = new Rating
-            {
-                RideId = model.RideId,
-
-                PassengerId = passengerId,
-
-                DriverId = ride.DriverId!.Value,
-
-                Score = model.Score,
-
-                Comment = model.Comment,
-
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _unitOfWork.GetRepo<Rating, int>().AddAsync(rating);
-
-            var saved = await _unitOfWork.SaveChangesAsync();
-
-            return saved > 0 ? Result.OK() : Result.Fail("Failed to submit rating.");
-        }
-    }
+			return saved > 0 ? Result.OK() : Result.Fail("Failed to submit rating.");
+		}
+	}
 }

@@ -1,0 +1,156 @@
+@model IEnumerable<Sekka.BLL.ViewModels.ComplaintVM>
+@using Sekka.DAL.Models
+@{
+    ViewData["Title"] = "My Tickets";
+}
+
+<h2 class="mb-4">My Assigned Tickets</h2>
+
+@if (TempData["SuccessMessage"] is string succ)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @succ <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @err <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="text-center text-muted py-5">
+        <p class="fs-5">No tickets assigned to you yet.</p>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var c in Model)
+        {
+            var priClass = c.Priority switch
+            {
+                ComplaintPriority.Critical => "danger",
+                ComplaintPriority.High     => "warning",
+                ComplaintPriority.Medium   => "info",
+                _                          => "secondary"
+            };
+            var statusClass = c.Status switch
+            {
+                ComplaintStatus.Open      => "primary",
+                ComplaintStatus.InReview  => "info",
+                ComplaintStatus.Escalated => "warning",
+                ComplaintStatus.Resolved  => "success",
+                ComplaintStatus.Closed    => "secondary",
+                _                         => "secondary"
+            };
+            bool isResolved = c.Status == ComplaintStatus.Resolved
+                           || c.Status == ComplaintStatus.Closed;
+
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>
+                            <code class="me-2">@c.TicketReference</code>
+                            <span class="badge bg-@priClass">@c.Priority</span>
+                            <span class="badge bg-@statusClass ms-1">@c.Status</span>
+                        </span>
+                        <small class="text-muted">@c.CreatedAt.ToString("dd MMM yyyy")</small>
+                    </div>
+
+                    <div class="card-body">
+                        <h5 class="card-title">@c.Subject</h5>
+                        <p class="card-text text-muted">@c.Description</p>
+
+                        <dl class="row small mb-0">
+                            <dt class="col-sm-3">Category</dt>
+                            <dd class="col-sm-9">@c.Category</dd>
+
+                            @* ── Complainant ── *@
+                            <dt class="col-sm-3">Submitted By</dt>
+                            <dd class="col-sm-9">
+                                @(c.ComplainantName ?? c.ComplainantId)
+                            </dd>
+
+                            @* ── Driver ── *@
+                            @if (c.DriverName is not null)
+                            {
+                                <dt class="col-sm-3">Driver</dt>
+                                <dd class="col-sm-9">@c.DriverName</dd>
+                            }
+                            else if (c.TripId.HasValue)
+                            {
+                                <dt class="col-sm-3">Trip</dt>
+                                <dd class="col-sm-9">#@c.TripId</dd>
+                            }
+
+                            @if (!string.IsNullOrEmpty(c.ResolutionNotes))
+                            {
+                                <dt class="col-sm-3">Resolution</dt>
+                                <dd class="col-sm-9">@c.ResolutionNotes</dd>
+                            }
+                        </dl>
+                    </div>
+
+                    @if (!isResolved)
+                    {
+                        <div class="card-footer bg-light">
+                            <div class="row g-2 align-items-end">
+
+                                <div class="col-md-6">
+                                    <form method="post" asp-action="UpdateStatus" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="complaintId" value="@c.Id" />
+                                        <select name="newStatus" class="form-select form-select-sm">
+                                            @foreach (var status in Enum.GetValues<ComplaintStatus>())
+                                            {
+                                                if (status == ComplaintStatus.Resolved || status == ComplaintStatus.Closed)
+                                                    continue;
+                                                <option value="@((int)status)" selected="@(c.Status == status)">@status</option>
+                                            }
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap">
+                                            Update Status
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <button class="btn btn-sm btn-success w-100"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#resolve-@c.Id">
+                                        Mark as Resolved
+                                    </button>
+                                </div>
+
+                                <div class="col-12 collapse" id="resolve-@c.Id">
+                                    <form method="post" asp-action="Resolve" class="mt-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="complaintId" value="@c.Id" />
+                                        <div class="mb-2">
+                                            <textarea name="resolutionNotes" class="form-control form-control-sm"
+                                                      rows="2" placeholder="Enter resolution notes…" required></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-sm btn-success">Submit Resolution</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#resolve-@c.Id">Cancel</button>
+                                    </form>
+                                </div>
+
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="card-footer bg-light text-success small">
+                            &#10003; Resolved on @(c.ResolvedAt?.ToString("dd MMM yyyy") ?? "—")
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

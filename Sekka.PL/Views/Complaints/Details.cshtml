@@ -1,0 +1,169 @@
+@model Sekka.BLL.ViewModels.ComplaintVM
+@using Sekka.DAL.Models
+@{
+    ViewData["Title"] = "Complaint Details";
+    bool isResolved = Model.Status == ComplaintStatus.Resolved
+                   || Model.Status == ComplaintStatus.Closed;
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Complaint Details</h2>
+            @if (User.IsInRole("SuperAdmin"))
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm">&larr; All Complaints</a>
+            }
+            else
+            {
+                <a asp-action="MyTickets" class="btn btn-outline-secondary btn-sm">&larr; My Tickets</a>
+            }
+        </div>
+
+        @if (TempData["SuccessMessage"] is string succ)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                @succ <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["ErrorMessage"] is string err)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                @err <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header fw-semibold d-flex justify-content-between">
+                <span><code>@Model.TicketReference</code></span>
+                <span>
+                    @{
+                        var priClass = Model.Priority switch
+                        {
+                            ComplaintPriority.Critical => "danger",
+                            ComplaintPriority.High     => "warning",
+                            ComplaintPriority.Medium   => "info",
+                            _                          => "secondary"
+                        };
+                        var statusClass = Model.Status switch
+                        {
+                            ComplaintStatus.Open      => "primary",
+                            ComplaintStatus.InReview  => "info",
+                            ComplaintStatus.Escalated => "warning",
+                            ComplaintStatus.Resolved  => "success",
+                            ComplaintStatus.Closed    => "secondary",
+                            _                         => "secondary"
+                        };
+                    }
+                    <span class="badge bg-@priClass">@Model.Priority</span>
+                    <span class="badge bg-@statusClass ms-1">@Model.Status</span>
+                </span>
+            </div>
+
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Subject</dt>
+                    <dd class="col-sm-9">@Model.Subject</dd>
+
+                    <dt class="col-sm-3">Category</dt>
+                    <dd class="col-sm-9">@Model.Category</dd>
+
+                    <dt class="col-sm-3">Description</dt>
+                    <dd class="col-sm-9">@Model.Description</dd>
+
+                    @* ── Complainant (passenger) ── *@
+                    <dt class="col-sm-3">Submitted By</dt>
+                    <dd class="col-sm-9">
+                        @(Model.ComplainantName ?? Model.ComplainantId)
+                    </dd>
+
+                    @* ── Linked trip + driver ── *@
+                    @if (Model.TripId.HasValue)
+                    {
+                        <dt class="col-sm-3">Trip</dt>
+                        <dd class="col-sm-9">#@Model.TripId</dd>
+                    }
+
+                    @if (Model.DriverName is not null)
+                    {
+                        <dt class="col-sm-3">Driver</dt>
+                        <dd class="col-sm-9">@Model.DriverName</dd>
+                    }
+
+                    @* ── Assigned agent ── *@
+                    <dt class="col-sm-3">Assigned To</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.AssignedAgentName is not null)
+                        {
+                            <span class="text-success">@Model.AssignedAgentName</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Unassigned</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Submitted</dt>
+                    <dd class="col-sm-9">@Model.CreatedAt.ToString("dd MMM yyyy HH:mm")</dd>
+
+                    @if (Model.ResolvedAt.HasValue)
+                    {
+                        <dt class="col-sm-3">Resolved At</dt>
+                        <dd class="col-sm-9">@Model.ResolvedAt.Value.ToString("dd MMM yyyy HH:mm")</dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.ResolutionNotes))
+                    {
+                        <dt class="col-sm-3">Resolution Notes</dt>
+                        <dd class="col-sm-9">@Model.ResolutionNotes</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        @if (User.IsInRole("Admin") && !isResolved)
+        {
+            <div class="card shadow-sm">
+                <div class="card-header fw-semibold">Actions</div>
+                <div class="card-body">
+
+                    <h6>Update Status</h6>
+                    <form method="post" asp-action="UpdateStatus" class="d-flex gap-2 mb-4">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="complaintId" value="@Model.Id" />
+                        <select name="newStatus" class="form-select">
+                            @foreach (var status in Enum.GetValues<ComplaintStatus>())
+                            {
+                                if (status == ComplaintStatus.Resolved || status == ComplaintStatus.Closed)
+                                    continue;
+                                <option value="@((int)status)" selected="@(Model.Status == status)">@status</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-primary text-nowrap">Save Status</button>
+                    </form>
+
+                    <h6>Resolve Ticket</h6>
+                    <form method="post" asp-action="Resolve">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="complaintId" value="@Model.Id" />
+                        <div class="mb-3">
+                            <textarea name="resolutionNotes" class="form-control" rows="3"
+                                      placeholder="Describe how the complaint was resolved…" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Mark as Resolved</button>
+                    </form>
+
+                </div>
+            </div>
+        }
+
+        @if (User.IsInRole("SuperAdmin"))
+        {
+            <a asp-action="Assign" asp-route-id="@Model.Id" class="btn btn-outline-primary mt-3">
+                Reassign this Ticket
+            </a>
+        }
+
+    </div>
+</div>
