@@ -12,7 +12,7 @@ using Sekka.DAL.Context;
 namespace Sekka.DAL.Migrations
 {
     [DbContext(typeof(SekkaDbContext))]
-    [Migration("20260812170218_test")]
+    [Migration("20260827131045_test")]
     partial class test
     {
         /// <inheritdoc />
@@ -307,6 +307,121 @@ namespace Sekka.DAL.Migrations
                     b.ToTable("Drivers");
                 });
 
+            modelBuilder.Entity("Sekka.DAL.Models.Rating", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DriverId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PassengerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("RideId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DriverId");
+
+                    b.HasIndex("PassengerId");
+
+                    b.HasIndex("RideId")
+                        .IsUnique();
+
+                    b.ToTable("Ratings");
+                });
+
+            modelBuilder.Entity("Sekka.DAL.Models.Ride", b =>
+                {
+                    b.Property<int>("RideID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RideID"));
+
+                    b.Property<decimal?>("ActualFare")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CancelReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("DistanceInKm")
+                        .HasColumnType("float");
+
+                    b.Property<int?>("DriverId")
+                        .HasColumnType("int");
+
+                    b.Property<double>("DropoffLat")
+                        .HasColumnType("float");
+
+                    b.Property<double>("DropoffLng")
+                        .HasColumnType("float");
+
+                    b.Property<string>("DropoffLocation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("EstimatedFare")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PassengerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<double>("PickupLat")
+                        .HasColumnType("float");
+
+                    b.Property<double>("PickupLng")
+                        .HasColumnType("float");
+
+                    b.Property<string>("PickupLocation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RequestTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ScheduledTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("StartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("RideID");
+
+                    b.HasIndex("DriverId");
+
+                    b.HasIndex("PassengerId");
+
+                    b.ToTable("Rides");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -377,6 +492,51 @@ namespace Sekka.DAL.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Sekka.DAL.Models.Rating", b =>
+                {
+                    b.HasOne("Sekka.DAL.Models.Driver", "Driver")
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sekka.DAL.Models.ApplicationUser", "Passenger")
+                        .WithMany()
+                        .HasForeignKey("PassengerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sekka.DAL.Models.Ride", "Ride")
+                        .WithOne("Rating")
+                        .HasForeignKey("Sekka.DAL.Models.Rating", "RideId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Driver");
+
+                    b.Navigation("Passenger");
+
+                    b.Navigation("Ride");
+                });
+
+            modelBuilder.Entity("Sekka.DAL.Models.Ride", b =>
+                {
+                    b.HasOne("Sekka.DAL.Models.Driver", "Driver")
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Sekka.DAL.Models.ApplicationUser", "Passenger")
+                        .WithMany()
+                        .HasForeignKey("PassengerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Driver");
+
+                    b.Navigation("Passenger");
+                });
+
             modelBuilder.Entity("Sekka.DAL.Models.ApplicationUser", b =>
                 {
                     b.Navigation("Driver");
@@ -386,6 +546,11 @@ namespace Sekka.DAL.Migrations
                 {
                     b.Navigation("Driver")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Sekka.DAL.Models.Ride", b =>
+                {
+                    b.Navigation("Rating");
                 });
 #pragma warning restore 612, 618
         }
