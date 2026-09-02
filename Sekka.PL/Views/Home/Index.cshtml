@@ -1,8 +1,145 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<!-- ── Hero ── -->
+<section class="sk-hero">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <div class="sk-hero-pill">
+                    <i class="bi bi-lightning-charge-fill"></i> Now available in Egypt
+                </div>
+                <h1>Your ride,<br /><em>your price.</em></h1>
+                <p class="lead">
+                    Sekka connects you with drivers in seconds. Set your own fare,
+                    track in real time, and arrive with confidence.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    @if (User.Identity?.IsAuthenticated == true && User.IsInRole("Passenger"))
+                    {
+                        <a asp-controller="Trips" asp-action="Book" class="btn btn-sk-primary btn-lg px-4">
+                            <i class="bi bi-car-front-fill me-2"></i>Book a ride
+                        </a>
+                        <a asp-controller="Trips" asp-action="Index" class="btn btn-sk-outline btn-lg px-4"
+                           style="color:#fff;border-color:rgba(255,255,255,.3);">
+                            My dashboard
+                        </a>
+                    }
+                    else if (User.Identity?.IsAuthenticated == false)
+                    {
+                        <a asp-controller="Account" asp-action="Register" class="btn btn-sk-primary btn-lg px-4">
+                            Get started free
+                        </a>
+                        <a asp-controller="Account" asp-action="Login" class="btn btn-sk-outline btn-lg px-4"
+                           style="color:#fff;border-color:rgba(255,255,255,.3);">
+                            Sign in
+                        </a>
+                    }
+                    else
+                    {
+                        <a asp-controller="Trips" asp-action="Index" class="btn btn-sk-primary btn-lg px-4">
+                            <i class="bi bi-speedometer2 me-2"></i>Go to dashboard
+                        </a>
+                    }
+                </div>
+            </div>
+
+            <div class="col-lg-6 d-none d-lg-flex justify-content-center">
+                <!-- Decorative ride-stat card -->
+                <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:2rem 2.5rem;min-width:300px;">
+                    <div class="d-flex align-items-center gap-3 mb-4">
+                        <div style="width:48px;height:48px;border-radius:50%;background:var(--sk-amber);display:flex;align-items:center;justify-content:center;">
+                            <i class="bi bi-geo-alt-fill text-dark fs-5"></i>
+                        </div>
+                        <div>
+                            <div style="color:rgba(255,255,255,.5);font-size:.75rem;">Active ride</div>
+                            <div style="color:#fff;font-weight:700;">En route to destination</div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <div>
+                            <div style="color:rgba(255,255,255,.45);font-size:.7rem;">Distance</div>
+                            <div style="color:#fff;font-weight:700;font-size:1.2rem;">8.4 km</div>
+                        </div>
+                        <div>
+                            <div style="color:rgba(255,255,255,.45);font-size:.7rem;">ETA</div>
+                            <div style="color:var(--sk-amber);font-weight:700;font-size:1.2rem;">12 min</div>
+                        </div>
+                        <div>
+                            <div style="color:rgba(255,255,255,.45);font-size:.7rem;">Fare</div>
+                            <div style="color:#fff;font-weight:700;font-size:1.2rem;">82 EGP</div>
+                        </div>
+                    </div>
+                    <div style="height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;">
+                        <div style="width:60%;height:100%;background:var(--sk-amber);border-radius:2px;"></div>
+                    </div>
+                    <div style="color:rgba(255,255,255,.4);font-size:.72rem;margin-top:.5rem;">60% of trip completed</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── How it works ── -->
+<section class="py-5" style="background:var(--sk-surface);">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="font-display fw-800" style="font-size:clamp(1.6rem,3vw,2.2rem);">How Sekka works</h2>
+            <p class="text-muted" style="max-width:500px;margin:.5rem auto 0;">Three steps between you and your next ride.</p>
+        </div>
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-4">
+                <div class="sk-card sk-card-body text-center p-4">
+                    <div style="width:56px;height:56px;border-radius:16px;background:rgba(245,166,35,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+                        <i class="bi bi-geo-alt-fill text-amber fs-4"></i>
+                    </div>
+                    <h5 class="fw-700 mb-2">Set your locations</h5>
+                    <p class="text-muted mb-0" style="font-size:.9rem;">Pin your pickup via GPS and search your destination. Fare is estimated instantly.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="sk-card sk-card-body text-center p-4">
+                    <div style="width:56px;height:56px;border-radius:16px;background:rgba(34,197,94,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+                        <i class="bi bi-check2-circle text-success fs-4"></i>
+                    </div>
+                    <h5 class="fw-700 mb-2">A driver accepts</h5>
+                    <p class="text-muted mb-0" style="font-size:.9rem;">Nearby drivers see your request in real time. Once accepted you see their car and contact details.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="sk-card sk-card-body text-center p-4">
+                    <div style="width:56px;height:56px;border-radius:16px;background:rgba(59,130,246,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+                        <i class="bi bi-star-fill text-sk-blue fs-4" style="color:var(--sk-blue);"></i>
+                    </div>
+                    <h5 class="fw-700 mb-2">Ride & rate</h5>
+                    <p class="text-muted mb-0" style="font-size:.9rem;">Arrive safely. Rate your captain and keep a full history of every trip you take.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Stats strip ── -->
+<section class="py-4" style="background:var(--sk-navy);">
+    <div class="container">
+        <div class="row text-center g-4">
+            <div class="col-6 col-md-3">
+                <div class="sk-fare" style="color:#fff;">12k+</div>
+                <div style="color:rgba(255,255,255,.5);font-size:.8rem;margin-top:.25rem;">Rides completed</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="sk-fare" style="color:var(--sk-amber);">450+</div>
+                <div style="color:rgba(255,255,255,.5);font-size:.8rem;margin-top:.25rem;">Active drivers</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="sk-fare" style="color:#fff;">4.8</div>
+                <div style="color:rgba(255,255,255,.5);font-size:.8rem;margin-top:.25rem;">Avg. driver rating</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="sk-fare" style="color:var(--sk-green);">98%</div>
+                <div style="color:rgba(255,255,255,.5);font-size:.8rem;margin-top:.25rem;">On-time arrivals</div>
+            </div>
+        </div>
+    </div>
+</section>

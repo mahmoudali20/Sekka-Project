@@ -1,124 +1,163 @@
 @model IEnumerable<Sekka.BLL.ViewModels.ComplaintVM>
 @using Sekka.DAL.Models
+
 @{
-    ViewData["Title"] = "All Complaints";
+    ViewData["Title"] = "Complaints";
+    var open      = Model.Count(c => c.Status == ComplaintStatus.Open);
+    var inReview  = Model.Count(c => c.Status == ComplaintStatus.InReview);
+    var escalated = Model.Count(c => c.Status == ComplaintStatus.Escalated);
+    var resolved  = Model.Count(c => c.Status == ComplaintStatus.Resolved || c.Status == ComplaintStatus.Closed);
 }
 
-<h2 class="mb-4">All Complaints</h2>
+<div class="container py-2">
 
-@if (TempData["SuccessMessage"] is string succ)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @succ <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="sk-page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+            <h1 class="fs-3">All Complaints</h1>
+            <p class="subtitle">Support tickets across the platform.</p>
+        </div>
     </div>
-}
-@if (TempData["ErrorMessage"] is string err)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @err <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="sk-stat">
+                <div class="stat-value text-amber">@open</div>
+                <div class="stat-label">Open</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="sk-stat">
+                <div class="stat-value" style="color:var(--sk-blue)">@inReview</div>
+                <div class="stat-label">In Review</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="sk-stat">
+                <div class="stat-value" style="color:#92400E">@escalated</div>
+                <div class="stat-label">Escalated</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="sk-stat">
+                <div class="stat-value" style="color:var(--sk-green)">@resolved</div>
+                <div class="stat-label">Resolved</div>
+            </div>
+        </div>
     </div>
-}
 
-@if (!Model.Any())
-{
-    <p class="text-muted">No complaints found.</p>
-}
-else
-{
-    <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle">
-            <thead class="table-dark">
-                <tr>
-                    <th>Ticket #</th>
-                    <th>Category</th>
-                    <th>Priority</th>
-                    <th>Status</th>
-                    <th>Complainant</th>
-                    <th>Driver</th>
-                    <th>Submitted</th>
-                    <th>Assigned Agent</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var c in Model)
-                {
-                    var priClass = c.Priority switch
-                    {
-                        ComplaintPriority.Critical => "danger",
-                        ComplaintPriority.High     => "warning",
-                        ComplaintPriority.Medium   => "info",
-                        _                          => "secondary"
-                    };
-                    var statusClass = c.Status switch
-                    {
-                        ComplaintStatus.Open      => "primary",
-                        ComplaintStatus.InReview  => "info",
-                        ComplaintStatus.Escalated => "warning",
-                        ComplaintStatus.Resolved  => "success",
-                        ComplaintStatus.Closed    => "secondary",
-                        _                         => "secondary"
-                    };
+    @if (TempData["SuccessMessage"] is string succ)
+    {
+        <div class="sk-alert sk-alert-success mb-4">
+            <i class="bi bi-check-circle-fill"></i><span>@succ</span>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] is string err)
+    {
+        <div class="sk-alert sk-alert-danger mb-4">
+            <i class="bi bi-exclamation-triangle-fill"></i><span>@err</span>
+        </div>
+    }
 
-                    <tr>
-                        <td><code>@c.TicketReference</code></td>
-                        <td>@c.Category</td>
-                        <td><span class="badge bg-@priClass">@c.Priority</span></td>
-                        <td><span class="badge bg-@statusClass">@c.Status</span></td>
+    @if (!Model.Any())
+    {
+        <div class="sk-empty sk-card py-5">
+            <span class="icon">🎉</span>
+            <h5 class="font-display" style="color:var(--sk-navy)">All clear</h5>
+            <p>No complaints yet — things are running smoothly.</p>
+        </div>
+    }
+    else
+    {
+        <div class="sk-card">
+            <div class="sk-card-body p-0">
+                <table class="sk-table">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Subject</th>
+                            <th>Category</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Submitted By</th>
+                            <th>Assigned To</th>
+                            <th>Date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model)
+                        {
+                            var statusCss = c.Status switch {
+                                ComplaintStatus.Open      => "sk-pill-open",
+                                ComplaintStatus.InReview  => "sk-pill-inreview",
+                                ComplaintStatus.Escalated => "sk-pill-escalated",
+                                ComplaintStatus.Resolved  => "sk-pill-resolved",
+                                ComplaintStatus.Closed    => "sk-pill-closed",
+                                _                         => ""
+                            };
+                            var priCss = c.Priority switch {
+                                ComplaintPriority.Critical => "sk-pri-critical",
+                                ComplaintPriority.High     => "sk-pri-high",
+                                ComplaintPriority.Medium   => "sk-pri-medium",
+                                _                          => "sk-pri-low"
+                            };
 
-                        @* Complainant (passenger) *@
-                        <td>
-                            @if (c.ComplainantName is not null)
-                            {
-                                <span>@c.ComplainantName</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted small">@c.ComplainantId</span>
-                            }
-                        </td>
-
-                        @* Driver (only meaningful when a trip is linked) *@
-                        <td>
-                            @if (c.DriverName is not null)
-                            {
-                                <span>@c.DriverName</span>
-                            }
-                            else if (c.TripId.HasValue)
-                            {
-                                <span class="text-muted small">Trip #@c.TripId</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted">—</span>
-                            }
-                        </td>
-
-                        <td>@c.CreatedAt.ToString("dd MMM yyyy")</td>
-
-                        @* Assigned agent *@
-                        <td>
-                            @if (c.AssignedAgentName is not null)
-                            {
-                                <span class="text-success">&#10003; @c.AssignedAgentName</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted">Unassigned</span>
-                            }
-                        </td>
-
-                        <td>
-                            <a asp-action="Details" asp-route-id="@c.Id"
-                               class="btn btn-sm btn-outline-secondary me-1">Details</a>
-                            <a asp-action="Assign" asp-route-id="@c.Id"
-                               class="btn btn-sm btn-outline-primary">
-                                @(c.AssignedAgentId != null ? "Reassign" : "Assign")
-                            </a>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-}
+                            <tr>
+                                <td>
+                                    <code style="font-size:.8rem;color:var(--sk-amber);background:var(--sk-navy);padding:.2rem .55rem;border-radius:4px;font-weight:700;">
+                                        @c.TicketReference
+                                    </code>
+                                </td>
+                                <td style="max-width:200px;">
+                                    <span class="text-truncate d-block" style="font-size:.875rem;font-weight:600;">@c.Subject</span>
+                                </td>
+                                <td>
+                                    <span style="font-size:.8rem;color:var(--sk-text-muted);">@c.Category</span>
+                                </td>
+                                <td><span class="sk-badge @priCss">@c.Priority</span></td>
+                                <td><span class="sk-badge @statusCss">@c.Status</span></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width:28px;height:28px;border-radius:50%;background:var(--sk-navy-3);display:flex;align-items:center;justify-content:center;color:var(--sk-amber);font-size:.7rem;font-weight:700;flex-shrink:0;">
+                                            @(c.ComplainantName?.Substring(0,1).ToUpper() ?? "?")
+                                        </div>
+                                        <span style="font-size:.84rem;">@(c.ComplainantName ?? c.ComplainantId)</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (c.AssignedAgentName != null)
+                                    {
+                                        <span style="color:var(--sk-green);font-weight:600;font-size:.84rem;">
+                                            <i class="bi bi-person-check-fill me-1"></i>@c.AssignedAgentName
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:var(--sk-text-muted);font-size:.84rem;">
+                                            <i class="bi bi-dash-circle me-1"></i>Unassigned
+                                        </span>
+                                    }
+                                </td>
+                                <td style="font-size:.8rem;color:var(--sk-text-muted);white-space:nowrap;">
+                                    @c.CreatedAt.ToString("dd MMM yyyy")
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <a asp-action="Details" asp-route-id="@c.Id"
+                                           class="btn btn-sk-outline btn-sm" title="View">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a asp-action="Assign" asp-route-id="@c.Id"
+                                           class="btn btn-sk-navy btn-sm" title="Assign">
+                                            <i class="bi bi-person-plus-fill"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>

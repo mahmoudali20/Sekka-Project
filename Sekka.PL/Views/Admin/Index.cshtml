@@ -1,98 +1,122 @@
-﻿@model IEnumerable<AdminVM>
+@model IEnumerable<AdminVM>
 
 @{
-    ViewData["Title"] = "Admins List";
+    ViewData["Title"] = "Admins";
 }
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Admins Management</h2>
-        <a asp-action="Create" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i> Add New Admin
-        </a>
-    </div>
+<div class="sk-page">
+    <div class="container">
 
-  
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show auto-dismiss-alert" role="alert">
-            @TempData["SuccessMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="sk-page-header d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <h1 style="font-size:1.75rem;">Admin Management</h1>
+                <p class="subtitle">Manage platform administrator accounts</p>
+            </div>
+            <a asp-action="Create" class="btn btn-sk-primary d-inline-flex align-items-center gap-2">
+                <i class="bi bi-plus-lg"></i> Add Admin
+            </a>
         </div>
-    }
 
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible fade show auto-dismiss-alert" role="alert">
-            @TempData["ErrorMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="sk-alert sk-alert-success auto-dismiss" role="alert">
+                <i class="bi bi-check-circle-fill"></i>
+                <span>@TempData["SuccessMessage"]</span>
+            </div>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="sk-alert sk-alert-danger auto-dismiss" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span>@TempData["ErrorMessage"]</span>
+            </div>
+        }
 
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            <table class="table table-hover table-striped align-middle mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Full Name</th>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Phone Number</th>
-                        <th>Address</th>
-                        <th class="text-center" style="width: 120px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (Model != null && Model.Any())
-                    {
-                        foreach (var admin in Model)
-                        {
+        <div class="sk-card">
+            <div class="sk-card-header navy">
+                <i class="bi bi-shield-lock-fill text-amber"></i>
+                Administrators
+                @{
+                    var count = Model?.Count() ?? 0;
+                }
+                <span class="badge ms-auto" style="background:rgba(255,255,255,.15);font-weight:600;font-size:.75rem;padding:.3rem .7rem;border-radius:50px;">@count</span>
+            </div>
+
+            @if (Model != null && Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="sk-table">
+                        <thead>
                             <tr>
-                                <td>@admin.FullName</td>
-                                <td>@admin.UserName</td>
-                                <td>@admin.Email</td>
-                                <td>@(string.IsNullOrEmpty(admin.PhoneNumber) ? "N/A" : admin.PhoneNumber)</td>
-                                <td>@(string.IsNullOrEmpty(admin.Address) ? "N/A" : admin.Address)</td>
-                                <td class="text-center">
-                                 
-                                    <form asp-action="Delete" asp-route-id="@admin.Id" method="post"
-                                          onsubmit="return confirm('Are you sure you want to delete this Admin (@admin.FullName)?');"
-                                          style="display:inline;">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-danger btn-sm">
-                                            Delete
-                                        </button>
-                                    </form>
-                                </td>
+                                <th>Admin</th>
+                                <th>Username</th>
+                                <th>Phone</th>
+                                <th>Address</th>
+                                <th class="text-center" style="width:90px;">Action</th>
                             </tr>
-                        }
-                    }
-                    else
-                    {
-                        <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">
-                                No admins found. Click "Add New Admin" to create one.
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+                        </thead>
+                        <tbody>
+                            @foreach (var admin in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="avatar-dot" style="width:36px;height:36px;border-radius:50%;background:var(--sk-navy-3);color:var(--sk-amber);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">
+                                                @(admin.FullName?.Substring(0, 1).ToUpper())
+                                            </div>
+                                            <div>
+                                                <div style="font-weight:600;color:var(--sk-text);">@admin.FullName</div>
+                                                <div style="font-size:.8rem;color:var(--sk-text-muted);">@admin.Email</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span style="font-family:monospace;background:var(--sk-surface-2);padding:.2rem .55rem;border-radius:6px;font-size:.85rem;color:var(--sk-text-muted);">
+                                            @admin.UserName
+                                        </span>
+                                    </td>
+                                    <td>@(string.IsNullOrEmpty(admin.PhoneNumber) ? "—" : admin.PhoneNumber)</td>
+                                    <td>@(string.IsNullOrEmpty(admin.Address) ? "—" : admin.Address)</td>
+                                    <td class="text-center">
+                                        <form asp-action="Delete" asp-route-id="@admin.Id" method="post"
+                                              onsubmit="return confirm('Delete @admin.FullName? This cannot be undone.');"
+                                              style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sk-danger btn-sm d-inline-flex align-items-center gap-1" style="font-size:.8rem;padding:.35rem .75rem;">
+                                                <i class="bi bi-trash3"></i> Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="sk-empty">
+                    <span class="icon"><i class="bi bi-shield-x"></i></span>
+                    <h6 style="font-weight:700;color:var(--sk-text);">No admins yet</h6>
+                    <p>Add the first admin account to get started.</p>
+                    <a asp-action="Create" class="btn btn-sk-primary">
+                        <i class="bi bi-plus-lg me-1"></i> Add Admin
+                    </a>
+                </div>
+            }
         </div>
+
     </div>
 </div>
 
 @section Scripts {
     <script>
-        
         setTimeout(() => {
-            const alerts = document.querySelectorAll('.auto-dismiss-alert');
-            alerts.forEach(alert => {
-             
-                alert.classList.remove('show');
-                
-               
-                setTimeout(() => alert.remove(), 300);
+            document.querySelectorAll('.auto-dismiss').forEach(el => {
+                el.style.transition = 'opacity .3s';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 300);
             });
-        }, 3000);
+        }, 3500);
     </script>
 }

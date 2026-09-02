@@ -1,56 +1,39 @@
-﻿@using Sekka.DAL.Models
+@using Sekka.DAL.Models
 @using System.Security.Claims
 
 @model IEnumerable<Sekka.DAL.Models.Ride>
 
 @{
-    ViewData["Title"] = "Trips Dashboard";
-
+    ViewData["Title"] = "Dashboard";
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-    var isPassenger = User.IsInRole("Passenger");
-    var isDriver = User.IsInRole("Driver");
+    var isPassenger   = User.IsInRole("Passenger");
+    var isDriver      = User.IsInRole("Driver");
 }
 
+<!-- Toast container -->
+<div id="notificationContainer" class="position-fixed top-0 end-0 p-3" style="z-index:9999;margin-top:70px;"></div>
 
-<!-- ========================================================= -->
-<!-- Notifications -->
-<!-- ========================================================= -->
-<div id="notificationContainer"
-     class="position-fixed top-0 end-0 p-3"
-     style="z-index: 9999;">
-</div>
-
-
-<div class="container mt-4">
-
+<div class="container">
 
     @Html.AntiForgeryToken()
 
-
-    <!-- ===================================================== -->
-    <!-- Server Messages -->
-    <!-- ===================================================== -->
+    <!-- Server alerts -->
     @if (TempData["ErrorMessage"] != null)
     {
-        <div id="serverError"
-             class="alert alert-danger shadow-sm">
-            @TempData["ErrorMessage"]
+        <div id="serverError" class="sk-alert sk-alert-danger">
+            <i class="bi bi-exclamation-triangle-fill"></i> @TempData["ErrorMessage"]
         </div>
     }
-
-
     @if (TempData["SuccessMessage"] != null)
     {
-        <div id="serverSuccess"
-             class="alert alert-success shadow-sm">
-            @TempData["SuccessMessage"]
+        <div id="serverSuccess" class="sk-alert sk-alert-success">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
         </div>
     }
 
-
-    <!-- ===================================================== -->
-    <!-- PASSENGER DASHBOARD -->
-    <!-- ===================================================== -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- PASSENGER DASHBOARD                                     -->
+    <!-- ═══════════════════════════════════════════════════════ -->
     @if (isPassenger)
     {
         var myRides = Model
@@ -58,285 +41,269 @@
             .OrderByDescending(r => r.RequestTime)
             .ToList();
 
-        var activeRide = myRides
-            .FirstOrDefault(r =>
-                r.Status != RideStatus.Completed &&
-                r.Status != RideStatus.Cancelled);
+        var activeRide = myRides.FirstOrDefault(r =>
+            r.Status != RideStatus.Completed && r.Status != RideStatus.Cancelled);
 
-        var unratedRide = myRides
-            .FirstOrDefault(r =>
-                r.Status == RideStatus.Completed &&
-                r.Rating == null);
+        var unratedRide = myRides.FirstOrDefault(r =>
+            r.Status == RideStatus.Completed && r.Rating == null);
 
-
-        <!-- ================================================= -->
         <!-- Header -->
-        <!-- ================================================= -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>
-                <i class="bi bi-person-circle text-primary"></i>
-                My Rides
-            </h2>
-
-            @if (activeRide == null)
+        <div class="sk-page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h1>My dashboard</h1>
+                <p class="subtitle">Track your current ride and recent trips.</p>
+            </div>
+            @if (activeRide == null && unratedRide == null)
             {
-                <a asp-action="Book"
-                       class="btn btn-primary btn-lg shadow-sm">
-                    <i class="bi bi-car-front-fill"></i>
-                    Book New Ride
+                <a asp-action="Book" class="btn btn-sk-primary">
+                    <i class="bi bi-car-front-fill me-2"></i>Book a ride
                 </a>
             }
         </div>
 
-
-        <!-- ================================================= -->
-        <!-- ACTIVE RIDE -->
-        <!-- ================================================= -->
+        <!-- ── ACTIVE RIDE ── -->
         @if (activeRide != null)
         {
-            <div class="card shadow border-primary mb-4"
-                 data-ride-id="@activeRide.RideID"
-                 id="passengerRideCard">
+            <div class="sk-active-ride mb-4 p-0 overflow-hidden" data-ride-id="@activeRide.RideID" id="passengerRideCard">
 
-
-                <!-- Header -->
-                <div class="card-header bg-primary text-white fw-bold">
-                    <i class="bi bi-geo-alt"></i>
-                    Active Ride Status:
-                    <span class="badge bg-light text-dark ride-status">
-                        @activeRide.Status
-                    </span>
+                <div class="sk-card-header amber" style="border-radius:var(--sk-radius) var(--sk-radius) 0 0;">
+                    <span class="pulse-dot"></span>
+                    Active ride &nbsp;·&nbsp;
+                    <span class="ride-status fw-700">@activeRide.Status</span>
                 </div>
 
+                <div class="sk-card-body">
+                    <div class="row g-4">
 
-                <!-- Body -->
-                <div class="card-body">
+                        <!-- Route -->
+                        <div class="col-md-5">
+                            <div class="sk-ride-card border-0 shadow-none p-0" style="border-left:none;">
+                                <div class="route-line">
+                                    <div class="d-flex align-items-start gap-2 position-relative">
+                                        <span class="route-dot pickup" style="position:relative;top:4px;flex-shrink:0;"></span>
+                                        <div>
+                                            <div style="font-size:.72rem;color:var(--sk-text-muted);">Pickup</div>
+                                            <div class="fw-600">@activeRide.PickupLocation</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-start gap-2 mt-3 position-relative">
+                                        <span class="route-dot dropoff" style="position:relative;top:4px;flex-shrink:0;"></span>
+                                        <div>
+                                            <div style="font-size:.72rem;color:var(--sk-text-muted);">Destination</div>
+                                            <div class="fw-600">@activeRide.DropoffLocation</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <!-- Locations -->
-                    <h5 class="card-title">
-                        <i class="bi bi-geo-alt-fill text-success"></i>
-                        From: @activeRide.PickupLocation
-                    </h5>
+                            <div class="mt-3 d-flex gap-4">
+                                <div>
+                                    <div style="font-size:.72rem;color:var(--sk-text-muted);">Distance</div>
+                                    <div class="fw-700">@activeRide.DistanceInKm km</div>
+                                </div>
+                                <div>
+                                    <div style="font-size:.72rem;color:var(--sk-text-muted);">Fare</div>
+                                    <div class="sk-fare" style="font-size:1.2rem;">@activeRide.EstimatedFare <span>EGP</span></div>
+                                </div>
+                            </div>
+                        </div>
 
-                    <h5 class="card-title">
-                        <i class="bi bi-geo-fill text-danger"></i>
-                        To: @activeRide.DropoffLocation
-                    </h5>
-
-                    <hr />
-
-                    <div class="row align-items-center">
-
-                        <!-- ================================= -->
-                        <!-- Ride Information -->
-                        <!-- ================================= -->
-                        <div class="col-md-8">
-                            <p class="mb-2 text-muted">
-                                Estimated Fare:
-                                <strong class="text-dark fs-5">
-                                    @activeRide.EstimatedFare EGP
-                                </strong>
-                            </p>
-
-                            <!-- ================================= -->
-                            <!-- Driver Information -->
-                            <!-- ================================= -->
+                        <!-- Driver info -->
+                        <div class="col-md-4">
                             <div class="driver-info">
                                 @if (activeRide.DriverId.HasValue && activeRide.Driver != null)
                                 {
-                                    <div class="p-3 bg-light rounded border">
-                                        <p class="mb-1 text-success fw-bold">
-                                            <i class="bi bi-person-check-fill"></i>
-                                            Captain: @(activeRide.Driver.User?.FullName ?? "Unknown")
-                                        </p>
-
-                                        <p class="mb-1">
-                                            <i class="bi bi-telephone-fill text-primary"></i>
-                                            Phone: @(activeRide.Driver.User?.PhoneNumber ?? "N/A")
-                                        </p>
-
-                                        @if (activeRide.Driver.Car != null)
-                                        {
-                                            <p class="mb-0">
-                                                <i class="bi bi-car-front-fill text-danger"></i>
-                                                Car: <strong>@activeRide.Driver.Car.Color @activeRide.Driver.Car.Model</strong>
-                                                <br />
-                                                <span class="text-muted">Plate: @activeRide.Driver.Car.PlateNumber</span>
-                                            </p>
-                                        }
+                                    <div class="sk-driver-box">
+                                        <div class="sk-driver-avatar">
+                                            <i class="bi bi-person-fill"></i>
+                                        </div>
+                                        <div>
+                                            <div class="driver-name">@(activeRide.Driver.User?.FullName ?? "Captain")</div>
+                                            <div class="driver-meta">
+                                                <i class="bi bi-telephone-fill me-1"></i>@(activeRide.Driver.User?.PhoneNumber ?? "N/A")
+                                            </div>
+                                            @if (activeRide.Driver.Car != null)
+                                            {
+                                                <div class="driver-meta mt-1">
+                                                    <i class="bi bi-car-front me-1"></i>
+                                                    @activeRide.Driver.Car.Color @activeRide.Driver.Car.Model
+                                                    &nbsp;·&nbsp; @activeRide.Driver.Car.PlateNumber
+                                                </div>
+                                            }
+                                        </div>
                                     </div>
                                 }
                                 else
                                 {
-                                    <p class="mb-0 text-warning fw-bold">
-                                        <i class="bi bi-hourglass-split"></i>
-                                        Looking for a driver...
-                                    </p>
+                                    <div class="sk-driver-box">
+                                        <div class="sk-driver-avatar" style="background:rgba(245,166,35,.15);">
+                                            <i class="bi bi-hourglass-split" style="color:var(--sk-amber);font-size:1.1rem;"></i>
+                                        </div>
+                                        <div>
+                                            <div class="driver-name">Finding your captain…</div>
+                                            <div class="driver-meta">This usually takes under a minute.</div>
+                                        </div>
+                                    </div>
                                 }
                             </div>
                         </div>
 
-                        <!-- ================================= -->
                         <!-- Cancel -->
-                        <!-- ================================= -->
-                        <div class="col-md-4 text-end">
+                        <div class="col-md-3 d-flex align-items-center justify-content-md-end">
                             @if (activeRide.Status == RideStatus.Requested || activeRide.Status == RideStatus.Accepted)
                             {
                                 <form asp-action="Cancel" method="post" id="cancelRideForm">
                                     @Html.AntiForgeryToken()
-                                    <input type="hidden" name="rideId" value="@activeRide.RideID" />
-                                    <input type="hidden" name="reason" value="Changed my mind" />
-
-                                    <button type="submit" class="btn btn-outline-danger">
-                                        <i class="bi bi-x-circle"></i>
-                                        Cancel Ride
+                                    <input type="hidden" name="rideId"  value="@activeRide.RideID" />
+                                    <input type="hidden" name="reason"  value="Changed my mind" />
+                                    <button type="submit" class="btn btn-sk-outline-danger">
+                                        <i class="bi bi-x-circle me-1"></i>Cancel ride
                                     </button>
                                 </form>
                             }
                         </div>
+
                     </div>
                 </div>
             </div>
         }
 
-        <!-- ================================================= -->
-        <!-- RATE RIDE -->
-        <!-- ================================================= -->
+        <!-- ── RATE LAST TRIP ── -->
         @if (activeRide == null && unratedRide != null)
         {
-            <div class="card shadow border-info mb-4 bg-light">
-                <div class="card-body text-center p-4">
-                    <h4 class="text-info">
-                        <i class="bi bi-star-fill"></i>
-                        Rate Your Last Trip
-                    </h4>
-
-                    <p>
-                        You recently completed a trip with
-                        <strong>@(unratedRide.Driver?.User?.FullName ?? "your captain")</strong>.
+            <div class="sk-card mb-4" style="border:2px solid var(--sk-amber);">
+                <div class="sk-card-header amber">
+                    <i class="bi bi-star-fill"></i> Rate your last trip
+                </div>
+                <div class="sk-card-body text-center py-4">
+                    <p class="mb-3">
+                        How was your ride with
+                        <strong>@(unratedRide.Driver?.User?.FullName ?? "your captain")</strong>?
                     </p>
-
-                    <div class="rating-section">
-                        <form asp-action="Rate" method="post" class="d-inline-block mt-2">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="RideId" value="@unratedRide.RideID" />
-
-                            <div class="input-group mb-3 justify-content-center">
-                                <select name="Score" class="form-select w-auto text-warning fw-bold">
-                                    <option value="5">5 ⭐⭐⭐⭐⭐</option>
-                                    <option value="4">4 ⭐⭐⭐⭐</option>
-                                    <option value="3">3 ⭐⭐⭐</option>
-                                    <option value="2">2 ⭐⭐</option>
-                                    <option value="1">1 ⭐</option>
-                                </select>
-
-                                <input type="text" name="Comment" class="form-control" placeholder="Write a comment..." style="max-width: 300px;" />
-
-                                <button type="submit" class="btn btn-info text-white fw-bold">
-                                    Submit Rating
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                    <form asp-action="Rate" method="post" class="d-inline-block">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="RideId" value="@unratedRide.RideID" />
+                        <div class="sk-stars mb-3" id="starRater">
+                            @for (int s = 5; s >= 1; s--)
+                            {
+                                <label data-value="@s" style="cursor:pointer;">★</label>
+                            }
+                        </div>
+                        <input type="hidden" name="Score" id="ratingScore" value="0" />
+                        <div class="sk-input-group justify-content-center mb-3" style="max-width:420px;margin:0 auto;">
+                            <input type="text" name="Comment" class="sk-form-control"
+                                   placeholder="Add a comment (optional)…" />
+                            <button type="submit" class="btn btn-sk-primary px-4" id="submitRateBtn" disabled>
+                                Submit
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         }
 
-        <!-- ================================================= -->
-        <!-- NO ACTIVE RIDE -->
-        <!-- ================================================= -->
+        <!-- ── EMPTY STATE ── -->
         @if (activeRide == null && unratedRide == null)
         {
-            <div class="alert alert-light border text-center p-5 shadow-sm">
-                <h4 class="text-muted">You have no active rides.</h4>
+            <div class="sk-empty">
+                <span class="icon"><i class="bi bi-car-front"></i></span>
+                <h4 class="fw-700" style="color:var(--sk-navy);">No active rides</h4>
                 <p>Ready to go somewhere?</p>
-                <a asp-action="Book" class="btn btn-primary mt-2">Book a Ride Now</a>
+                <a asp-action="Book" class="btn btn-sk-primary px-4">Book a ride now</a>
             </div>
         }
     }
 
 
-    <!-- ===================================================== -->
-    <!-- DRIVER DASHBOARD -->
-    <!-- ===================================================== -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- DRIVER DASHBOARD                                        -->
+    <!-- ═══════════════════════════════════════════════════════ -->
     @if (isDriver)
     {
-        var myActiveRide = Model
-            .FirstOrDefault(r =>
-                r.Driver?.UserId == currentUserId &&
-                r.Status != RideStatus.Completed &&
-                r.Status != RideStatus.Cancelled);
+        var myActiveRide = Model.FirstOrDefault(r =>
+            r.Driver?.UserId == currentUserId &&
+            r.Status != RideStatus.Completed &&
+            r.Status != RideStatus.Cancelled);
 
         var availableRequests = Model
             .Where(r => r.Status == RideStatus.Requested)
             .OrderByDescending(r => r.RequestTime)
             .ToList();
 
-        <!-- ================================================= -->
         <!-- Header -->
-        <!-- ================================================= -->
-        <h2 class="mb-4">
-            <i class="bi bi-steering text-success"></i>
-            Driver Dashboard
-        </h2>
+        <div class="sk-page-header">
+            <h1>Driver dashboard</h1>
+            <p class="subtitle">
+                @if (myActiveRide != null)
+                {
+                    <span>You have an active trip in progress.</span>
+                }
+                else
+                {
+                    <span>@availableRequests.Count ride request(s) waiting for a driver.</span>
+                }
+            </p>
+        </div>
 
-
-        <!-- ================================================= -->
-        <!-- CURRENT ACTIVE TRIP -->
-        <!-- ================================================= -->
+        <!-- ── ACTIVE TRIP ── -->
         @if (myActiveRide != null)
         {
-            <div class="card shadow border-success mb-5"
-                 data-ride-id="@myActiveRide.RideID"
-                 id="driverActiveRideCard">
-
-                <div class="card-header bg-success text-white fw-bold">
-                    <i class="bi bi-play-circle-fill"></i>
-                    Current Active Trip
+            <div class="sk-active-ride mb-4 p-0 overflow-hidden" data-ride-id="@myActiveRide.RideID" id="driverActiveRideCard">
+                <div class="sk-card-header green" style="border-radius:var(--sk-radius) var(--sk-radius) 0 0;">
+                    <span class="pulse-dot" style="background:var(--sk-green);"></span>
+                    Current trip &nbsp;·&nbsp;
+                    <span class="ride-status fw-700">@myActiveRide.Status</span>
                 </div>
 
-                <div class="card-body">
-                    <div class="row">
-                        <!-- ================================= -->
-                        <!-- Trip Information -->
-                        <!-- ================================= -->
-                        <div class="col-md-8">
-                            <p class="fs-5 mb-3">
-                                <i class="bi bi-person-fill text-primary"></i>
-                                <strong>Passenger:</strong> @(myActiveRide.Passenger?.FullName ?? "Passenger Details Hidden")
-                            </p>
-
-                            <p>
-                                <strong><i class="bi bi-geo-alt"></i> Pickup:</strong> @myActiveRide.PickupLocation
-                            </p>
-
-                            <p>
-                                <strong><i class="bi bi-geo"></i> Dropoff:</strong> @myActiveRide.DropoffLocation
-                            </p>
-
-                            <p>
-                                <strong>Distance:</strong> @myActiveRide.DistanceInKm km |
-                                <strong>Fare:</strong> @myActiveRide.EstimatedFare EGP
-                            </p>
-
-                            <span class="badge bg-warning text-dark fs-6 ride-status">
-                                Status: @myActiveRide.Status
-                            </span>
+                <div class="sk-card-body">
+                    <div class="row g-4 align-items-center">
+                        <div class="col-md-5">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <div class="sk-driver-avatar" style="width:40px;height:40px;font-size:1rem;">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:.72rem;color:var(--sk-text-muted);">Passenger</div>
+                                    <div class="fw-700">@(myActiveRide.Passenger?.FullName ?? "Passenger")</div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mb-1">
+                                <span class="route-dot pickup" style="margin-top:4px;flex-shrink:0;position:relative;"></span>
+                                <div>
+                                    <div style="font-size:.72rem;color:var(--sk-text-muted);">Pickup</div>
+                                    <div class="fw-600" style="font-size:.9rem;">@myActiveRide.PickupLocation</div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-2">
+                                <span class="route-dot dropoff" style="margin-top:4px;flex-shrink:0;position:relative;"></span>
+                                <div>
+                                    <div style="font-size:.72rem;color:var(--sk-text-muted);">Destination</div>
+                                    <div class="fw-600" style="font-size:.9rem;">@myActiveRide.DropoffLocation</div>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- ================================= -->
-                        <!-- Actions -->
-                        <!-- ================================= -->
-                        <div class="col-md-4 d-flex align-items-center justify-content-end gap-2">
+                        <div class="col-md-4">
+                            <div class="d-flex gap-4">
+                                <div>
+                                    <div style="font-size:.72rem;color:var(--sk-text-muted);">Distance</div>
+                                    <div class="fw-700">@myActiveRide.DistanceInKm km</div>
+                                </div>
+                                <div>
+                                    <div style="font-size:.72rem;color:var(--sk-text-muted);">Fare</div>
+                                    <div class="sk-fare" style="font-size:1.2rem;">@myActiveRide.EstimatedFare <span>EGP</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 d-flex justify-content-md-end gap-2">
                             @if (myActiveRide.Status == RideStatus.Accepted)
                             {
                                 <form asp-action="Start" method="post">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="rideId" value="@myActiveRide.RideID" />
-
-                                    <button type="submit" class="btn btn-warning btn-lg shadow-sm">
-                                        <i class="bi bi-geo-fill"></i>
-                                        Start Ride
+                                    <button type="submit" class="btn btn-sk-primary">
+                                        <i class="bi bi-geo-fill me-1"></i>Start ride
                                     </button>
                                 </form>
                             }
@@ -344,12 +311,10 @@
                             {
                                 <form asp-action="Complete" method="post">
                                     @Html.AntiForgeryToken()
-                                    <input type="hidden" name="rideId" value="@myActiveRide.RideID" />
-                                    <input type="hidden" name="actualFare" value="@myActiveRide.EstimatedFare" />
-
-                                    <button type="submit" class="btn btn-info btn-lg shadow-sm text-white">
-                                        <i class="bi bi-check-all"></i>
-                                        Complete Ride
+                                    <input type="hidden" name="rideId"      value="@myActiveRide.RideID" />
+                                    <input type="hidden" name="actualFare"  value="@myActiveRide.EstimatedFare" />
+                                    <button type="submit" class="btn btn-sk-success">
+                                        <i class="bi bi-check2-all me-1"></i>Complete ride
                                     </button>
                                 </form>
                             }
@@ -359,71 +324,67 @@
             </div>
         }
 
-
-        <!-- ================================================= -->
-        <!-- AVAILABLE REQUESTS -->
-        <!-- ================================================= -->
+        <!-- ── AVAILABLE REQUESTS ── -->
         @if (myActiveRide == null)
         {
-            <h4 class="mb-3 text-muted">Available Requests</h4>
+            <h5 class="fw-700 mb-3" style="color:var(--sk-text-muted);">Available requests</h5>
 
-            <div class="row" id="availableRidesContainer">
-                <!-- ========================================= -->
-                <!-- No Requests -->
-                <!-- ========================================= -->
+            <div class="row g-3" id="availableRidesContainer">
                 @if (!availableRequests.Any())
                 {
                     <div class="col-12" id="noRequestsMessage">
-                        <div class="alert alert-secondary text-center">
-                            No new ride requests at the moment.
+                        <div class="sk-empty" style="padding:3rem 1rem;">
+                            <span class="icon"><i class="bi bi-inbox"></i></span>
+                            <p>No ride requests right now. Check back in a moment.</p>
                         </div>
                     </div>
                 }
 
-                <!-- ========================================= -->
-                <!-- Requests -->
-                <!-- ========================================= -->
-                @foreach (var request in availableRequests)
+                @foreach (var req in availableRequests)
                 {
-                    <div class="col-md-6 mb-3" data-ride-id="@request.RideID">
-                        <div class="card shadow-sm h-100">
-                            <div class="card-body">
-                                <h5 class="card-title text-primary">
-                                    <i class="bi bi-geo-alt"></i>
-                                    @request.DistanceInKm km Trip
-                                </h5>
+                    <div class="col-md-6 col-xl-4" data-ride-id="@req.RideID">
+                        <div class="sk-card sk-ride-card h-100">
+                            <div class="sk-card-body">
 
-                                <p class="text-dark fw-bold mb-2">
-                                    <i class="bi bi-person"></i>
-                                    @(request.Passenger?.FullName ?? "New Passenger")
-                                </p>
-
-                                <p class="card-text mb-1">
-                                    <small><strong>From:</strong> @request.PickupLocation</small>
-                                </p>
-
-                                <p class="card-text mb-3">
-                                    <small><strong>To:</strong> @request.DropoffLocation</small>
-                                </p>
-
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="fw-bold text-success fs-5">
-                                        @request.EstimatedFare EGP
-                                    </span>
-
-                                    <form asp-action="Accept" method="post">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="rideId" value="@request.RideID" />
-
-                                        <button type="submit" class="btn btn-success">
-                                            <i class="bi bi-check2-circle"></i>
-                                            Accept
-                                        </button>
-                                    </form>
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="sk-fare" style="font-size:1.3rem;">
+                                        @req.EstimatedFare <span>EGP</span>
+                                    </div>
+                                    <span class="sk-badge sk-badge-requested">@req.DistanceInKm km</span>
                                 </div>
+
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <div class="sk-driver-avatar" style="width:34px;height:34px;font-size:.85rem;">
+                                        <i class="bi bi-person-fill"></i>
+                                    </div>
+                                    <div class="fw-600" style="font-size:.9rem;">
+                                        @(req.Passenger?.FullName ?? "Passenger")
+                                    </div>
+                                </div>
+
+                                <div class="route-line mb-3">
+                                    <div class="d-flex gap-2 align-items-start position-relative">
+                                        <span class="route-dot pickup" style="position:relative;top:3px;flex-shrink:0;"></span>
+                                        <div style="font-size:.83rem;">@req.PickupLocation</div>
+                                    </div>
+                                    <div class="d-flex gap-2 align-items-start mt-2 position-relative">
+                                        <span class="route-dot dropoff" style="position:relative;top:3px;flex-shrink:0;"></span>
+                                        <div style="font-size:.83rem;">@req.DropoffLocation</div>
+                                    </div>
+                                </div>
+
+                                <form asp-action="Accept" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="rideId" value="@req.RideID" />
+                                    <button type="submit" class="btn btn-sk-success w-100">
+                                        <i class="bi bi-check2-circle me-1"></i>Accept
+                                    </button>
+                                </form>
                             </div>
-                            <div class="card-footer text-muted text-center" style="font-size: 0.85rem;">
-                                Requested at @request.RequestTime.ToLocalTime().ToString("hh:mm tt")
+
+                            <div class="sk-card-footer">
+                                <i class="bi bi-clock me-1"></i>
+                                Requested at @req.RequestTime.ToLocalTime().ToString("hh:mm tt")
                             </div>
                         </div>
                     </div>
@@ -434,24 +395,49 @@
 
 </div>
 
-
-<!-- ========================================================= -->
 <!-- SignalR -->
-<!-- ========================================================= -->
 @if (isDriver || isPassenger)
 {
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
     <script src="~/js/tripHub.js" asp-append-version="true"></script>
 }
 
-
-<!-- ========================================================= -->
-<!-- Auto remove server messages -->
-<!-- ========================================================= -->
+@section Scripts {
 <script>
+    // Auto-dismiss server alerts
     setTimeout(() => {
         document.getElementById("serverError")?.remove();
         document.getElementById("serverSuccess")?.remove();
-    }, 3000);
+    }, 4000);
+
+    // Star rater for passenger rating
+    const starLabels = document.querySelectorAll('#starRater label');
+    const scoreInput = document.getElementById('ratingScore');
+    const submitBtn  = document.getElementById('submitRateBtn');
+
+    if (starLabels.length) {
+        starLabels.forEach(lbl => {
+            lbl.addEventListener('click', () => {
+                const v = parseInt(lbl.dataset.value);
+                scoreInput.value = v;
+                if (submitBtn) submitBtn.disabled = false;
+                starLabels.forEach(l =>
+                    l.style.color = parseInt(l.dataset.value) <= v ? 'var(--sk-amber)' : '#D1D5DB'
+                );
+            });
+            lbl.addEventListener('mouseenter', () => {
+                const v = parseInt(lbl.dataset.value);
+                starLabels.forEach(l =>
+                    l.style.color = parseInt(l.dataset.value) <= v ? 'var(--sk-amber)' : '#D1D5DB'
+                );
+            });
+        });
+        document.getElementById('starRater')?.addEventListener('mouseleave', () => {
+            const current = parseInt(scoreInput?.value || 0);
+            starLabels.forEach(l =>
+                l.style.color = parseInt(l.dataset.value) <= current ? 'var(--sk-amber)' : '#D1D5DB'
+            );
+        });
+    }
 </script>
+}

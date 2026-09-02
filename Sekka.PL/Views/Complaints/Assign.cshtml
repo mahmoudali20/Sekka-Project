@@ -6,97 +6,144 @@
                     ?? new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
 }
 
-<div class="row justify-content-center">
-    <div class="col-lg-7">
+<div class="sk-page">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
 
-        <h2 class="mb-1">Assign Ticket</h2>
-        <p class="text-muted mb-4">
-            Ticket <code>@Model.TicketReference</code> &mdash; @Model.Category
-        </p>
+                <div class="sk-page-header">
+                    <a asp-action="Index"
+                       class="d-inline-flex align-items-center gap-2 mb-3"
+                       style="color:var(--sk-text-muted);font-size:.85rem;font-weight:500;text-decoration:none;">
+                        <i class="bi bi-arrow-left" style="font-size:1rem;"></i> Back to Complaints
+                    </a>
+                    <h1 style="font-size:1.75rem;">Assign Ticket</h1>
+                    <p class="subtitle">
+                        <code style="background:var(--sk-surface-2);border:1px solid var(--sk-border);border-radius:4px;padding:2px 6px;font-size:.85rem;">
+                            @Model.TicketReference
+                        </code>
+                        &mdash; @Model.Category
+                    </p>
+                </div>
+                @if (TempData["ErrorMessage"] is string err)
+                {
+                    <div class="sk-alert sk-alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        @err
+                    </div>
+                }
 
-        @if (TempData["ErrorMessage"] is string err)
-        {
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                @err <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        }
+                <div class="sk-card mb-4">
+                    <div class="sk-card-header navy">
+                        <i class="bi bi-ticket-detailed" style="color:var(--sk-amber);"></i>
+                        Complaint Summary
+                    </div>
+                    <div class="sk-card-body">
 
-        <div class="card mb-4">
-            <div class="card-header fw-semibold">Complaint Summary</div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-4">Subject</dt>
-                    <dd class="col-sm-8">@Model.Subject</dd>
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <span class="sk-badge sk-pri-@Model.Priority.ToString().ToLower()">
+                                @Model.Priority
+                            </span>
+                            <span class="sk-badge sk-pill-@Model.Status.ToString().ToLower()">
+                                @Model.Status
+                            </span>
+                            @if (Model.AssignedAgentName is not null)
+                            {
+                                <span class="sk-badge" style="background:#D1FAE5;color:#065F46;">
+                                    <i class="bi bi-person-check-fill"></i> @Model.AssignedAgentName
+                                </span>
+                            }
+                        </div>
 
-                    <dt class="col-sm-4">Description</dt>
-                    <dd class="col-sm-8">@Model.Description</dd>
+                        <hr class="divider" />
 
-                    <dt class="col-sm-4">Priority</dt>
-                    <dd class="col-sm-8">@Model.Priority</dd>
+                        <dl style="display:grid;grid-template-columns:140px 1fr;gap:.6rem .75rem;margin:0;font-size:.875rem;">
+                            <dt style="color:var(--sk-text-muted);font-weight:600;">Subject</dt>
+                            <dd style="margin:0;font-weight:500;color:var(--sk-text);">@Model.Subject</dd>
 
-                    <dt class="col-sm-4">Status</dt>
-                    <dd class="col-sm-8">@Model.Status</dd>
+                            <dt style="color:var(--sk-text-muted);font-weight:600;">Description</dt>
+                            <dd style="margin:0;color:var(--sk-text);">@Model.Description</dd>
 
-                    @* ── Complainant ── *@
-                    <dt class="col-sm-4">Submitted By</dt>
-                    <dd class="col-sm-8">
-                        @(Model.ComplainantName ?? Model.ComplainantId)
-                    </dd>
+                            <dt style="color:var(--sk-text-muted);font-weight:600;">Submitted By</dt>
+                            <dd style="margin:0;color:var(--sk-text);">
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-person-circle" style="color:var(--sk-amber);"></i>
+                                    @(Model.ComplainantName ?? Model.ComplainantId)
+                                </span>
+                            </dd>
 
-                    @* ── Driver ── *@
-                    @if (Model.DriverName is not null)
-                    {
-                        <dt class="col-sm-4">Driver</dt>
-                        <dd class="col-sm-8">@Model.DriverName</dd>
-                    }
-                    else if (Model.TripId.HasValue)
-                    {
-                        <dt class="col-sm-4">Trip</dt>
-                        <dd class="col-sm-8">#@Model.TripId</dd>
-                    }
+                            @if (Model.DriverName is not null)
+                            {
+                                <dt style="color:var(--sk-text-muted);font-weight:600;">Driver</dt>
+                                <dd style="margin:0;color:var(--sk-text);">
+                                    <span class="d-inline-flex align-items-center gap-1">
+                                        <i class="bi bi-car-front-fill" style="color:var(--sk-navy);"></i>
+                                        @Model.DriverName
+                                    </span>
+                                </dd>
+                            }
+                            else if (Model.TripId.HasValue)
+                            {
+                                <dt style="color:var(--sk-text-muted);font-weight:600;">Trip</dt>
+                                <dd style="margin:0;color:var(--sk-text);">#@Model.TripId</dd>
+                            }
 
-                    @* ── Current agent ── *@
-                    @if (Model.AssignedAgentName is not null)
-                    {
-                        <dt class="col-sm-4">Currently Assigned</dt>
-                        <dd class="col-sm-8 text-success">@Model.AssignedAgentName</dd>
-                    }
+                            <dt style="color:var(--sk-text-muted);font-weight:600;">Submitted</dt>
+                            <dd style="margin:0;color:var(--sk-text-muted);font-size:.82rem;">
+                                <i class="bi bi-clock me-1"></i>@Model.CreatedAt.ToString("dd MMM yyyy · HH:mm")
+                            </dd>
+                        </dl>
 
-                    <dt class="col-sm-4">Submitted</dt>
-                    <dd class="col-sm-8">@Model.CreatedAt.ToString("dd MMM yyyy HH:mm")</dd>
-                </dl>
+                    </div>
+                </div>
+
+                <div class="sk-card mb-4">
+                    <div class="sk-card-header navy">
+                        <i class="bi bi-person-fill-gear" style="color:var(--sk-amber);"></i>
+                        Assign to Admin
+                    </div>
+                    <div class="sk-card-body">
+                        <form method="post" asp-action="Assign">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="complaintId" value="@Model.Id" />
+
+                            @if (!adminList.Any())
+                            {
+                                <div class="sk-alert sk-alert-warning">
+                                    <i class="bi bi-person-x-fill"></i>
+                                    No admins available. Please create an admin account first.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="sk-form-group">
+                                    <label for="adminId" class="sk-label">Select Admin</label>
+                                    <select id="adminId" name="adminId" class="sk-input" required>
+                                        <option value="">— choose an admin —</option>
+                                        @foreach (var item in adminList)
+                                        {
+                                            <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+
+                            <hr class="divider" />
+
+                            <div class="d-flex justify-content-end gap-2">
+                                <a asp-action="Index" class="btn btn-sk-outline">Cancel</a>
+                                <button type="submit"
+                                        class="btn btn-sk-primary d-inline-flex align-items-center gap-2"
+                                        @(!adminList.Any() ? "disabled" : "")>
+                                    <i class="bi bi-person-fill-check"></i> Assign Ticket
+                                </button>
+                            </div>
+
+                        </form>
+                    </div>
+                </div>
+
             </div>
         </div>
-
-        <form method="post" asp-action="Assign">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="complaintId" value="@Model.Id" />
-
-            <div class="mb-3">
-                <label for="adminId" class="form-label fw-semibold">Select Admin</label>
-                @if (!adminList.Any())
-                {
-                    <p class="text-danger">No admins available. Please create an admin account first.</p>
-                }
-                else
-                {
-                    <select id="adminId" name="adminId" class="form-select" required>
-                        <option value="">— choose an admin —</option>
-                        @foreach (var item in adminList)
-                        {
-                            <option value="@item.Value" selected="@item.Selected">@item.Text</option>
-                        }
-                    </select>
-                }
-            </div>
-
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary" @(!adminList.Any() ? "disabled" : "")>
-                    Assign Ticket
-                </button>
-                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
-            </div>
-        </form>
-
     </div>
 </div>

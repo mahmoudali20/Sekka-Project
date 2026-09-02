@@ -4,166 +4,210 @@
     ViewData["Title"] = "Complaint Details";
     bool isResolved = Model.Status == ComplaintStatus.Resolved
                    || Model.Status == ComplaintStatus.Closed;
+
+    var statusCss = Model.Status switch {
+        ComplaintStatus.Open      => "sk-pill-open",
+        ComplaintStatus.InReview  => "sk-pill-inreview",
+        ComplaintStatus.Escalated => "sk-pill-escalated",
+        ComplaintStatus.Resolved  => "sk-pill-resolved",
+        ComplaintStatus.Closed    => "sk-pill-closed",
+        _                         => ""
+    };
+    var priCss = Model.Priority switch {
+        ComplaintPriority.Critical => "sk-pri-critical",
+        ComplaintPriority.High     => "sk-pri-high",
+        ComplaintPriority.Medium   => "sk-pri-medium",
+        _                          => "sk-pri-low"
+    };
 }
 
-<div class="row justify-content-center">
-    <div class="col-lg-8">
+<div class="container py-2">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
 
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="mb-0">Complaint Details</h2>
-            @if (User.IsInRole("SuperAdmin"))
+            <div class="d-flex align-items-center gap-3 mb-4">
+                @if (User.IsInRole("SuperAdmin"))
+                {
+                    <a asp-action="Index" class="btn btn-sk-outline btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i> All Complaints
+                    </a>
+                }
+                else
+                {
+                    <a asp-action="MyTickets" class="btn btn-sk-outline btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i> My Tickets
+                    </a>
+                }
+                <span class="text-muted" style="font-size:.8rem;">Ticket Details</span>
+            </div>
+
+            @if (TempData["SuccessMessage"] is string succ)
             {
-                <a asp-action="Index" class="btn btn-outline-secondary btn-sm">&larr; All Complaints</a>
+                <div class="sk-alert sk-alert-success mb-4">
+                    <i class="bi bi-check-circle-fill"></i><span>@succ</span>
+                </div>
             }
-            else
+            @if (TempData["ErrorMessage"] is string err)
             {
-                <a asp-action="MyTickets" class="btn btn-outline-secondary btn-sm">&larr; My Tickets</a>
+                <div class="sk-alert sk-alert-danger mb-4">
+                    <i class="bi bi-exclamation-triangle-fill"></i><span>@err</span>
+                </div>
             }
-        </div>
 
-        @if (TempData["SuccessMessage"] is string succ)
-        {
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                @succ <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        }
-        @if (TempData["ErrorMessage"] is string err)
-        {
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                @err <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        }
-
-        <div class="card shadow-sm mb-4">
-            <div class="card-header fw-semibold d-flex justify-content-between">
-                <span><code>@Model.TicketReference</code></span>
-                <span>
-                    @{
-                        var priClass = Model.Priority switch
-                        {
-                            ComplaintPriority.Critical => "danger",
-                            ComplaintPriority.High     => "warning",
-                            ComplaintPriority.Medium   => "info",
-                            _                          => "secondary"
-                        };
-                        var statusClass = Model.Status switch
-                        {
-                            ComplaintStatus.Open      => "primary",
-                            ComplaintStatus.InReview  => "info",
-                            ComplaintStatus.Escalated => "warning",
-                            ComplaintStatus.Resolved  => "success",
-                            ComplaintStatus.Closed    => "secondary",
-                            _                         => "secondary"
-                        };
-                    }
-                    <span class="badge bg-@priClass">@Model.Priority</span>
-                    <span class="badge bg-@statusClass ms-1">@Model.Status</span>
-                </span>
-            </div>
-
-            <div class="card-body">
-                <dl class="row">
-                    <dt class="col-sm-3">Subject</dt>
-                    <dd class="col-sm-9">@Model.Subject</dd>
-
-                    <dt class="col-sm-3">Category</dt>
-                    <dd class="col-sm-9">@Model.Category</dd>
-
-                    <dt class="col-sm-3">Description</dt>
-                    <dd class="col-sm-9">@Model.Description</dd>
-
-                    @* ── Complainant (passenger) ── *@
-                    <dt class="col-sm-3">Submitted By</dt>
-                    <dd class="col-sm-9">
-                        @(Model.ComplainantName ?? Model.ComplainantId)
-                    </dd>
-
-                    @* ── Linked trip + driver ── *@
-                    @if (Model.TripId.HasValue)
-                    {
-                        <dt class="col-sm-3">Trip</dt>
-                        <dd class="col-sm-9">#@Model.TripId</dd>
-                    }
-
-                    @if (Model.DriverName is not null)
-                    {
-                        <dt class="col-sm-3">Driver</dt>
-                        <dd class="col-sm-9">@Model.DriverName</dd>
-                    }
-
-                    @* ── Assigned agent ── *@
-                    <dt class="col-sm-3">Assigned To</dt>
-                    <dd class="col-sm-9">
-                        @if (Model.AssignedAgentName is not null)
-                        {
-                            <span class="text-success">@Model.AssignedAgentName</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted">Unassigned</span>
-                        }
-                    </dd>
-
-                    <dt class="col-sm-3">Submitted</dt>
-                    <dd class="col-sm-9">@Model.CreatedAt.ToString("dd MMM yyyy HH:mm")</dd>
-
-                    @if (Model.ResolvedAt.HasValue)
-                    {
-                        <dt class="col-sm-3">Resolved At</dt>
-                        <dd class="col-sm-9">@Model.ResolvedAt.Value.ToString("dd MMM yyyy HH:mm")</dd>
-                    }
-
-                    @if (!string.IsNullOrEmpty(Model.ResolutionNotes))
-                    {
-                        <dt class="col-sm-3">Resolution Notes</dt>
-                        <dd class="col-sm-9">@Model.ResolutionNotes</dd>
-                    }
-                </dl>
-            </div>
-        </div>
-
-        @if (User.IsInRole("Admin") && !isResolved)
-        {
-            <div class="card shadow-sm">
-                <div class="card-header fw-semibold">Actions</div>
-                <div class="card-body">
-
-                    <h6>Update Status</h6>
-                    <form method="post" asp-action="UpdateStatus" class="d-flex gap-2 mb-4">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="complaintId" value="@Model.Id" />
-                        <select name="newStatus" class="form-select">
-                            @foreach (var status in Enum.GetValues<ComplaintStatus>())
-                            {
-                                if (status == ComplaintStatus.Resolved || status == ComplaintStatus.Closed)
-                                    continue;
-                                <option value="@((int)status)" selected="@(Model.Status == status)">@status</option>
-                            }
-                        </select>
-                        <button type="submit" class="btn btn-primary text-nowrap">Save Status</button>
-                    </form>
-
-                    <h6>Resolve Ticket</h6>
-                    <form method="post" asp-action="Resolve">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="complaintId" value="@Model.Id" />
-                        <div class="mb-3">
-                            <textarea name="resolutionNotes" class="form-control" rows="3"
-                                      placeholder="Describe how the complaint was resolved…" required></textarea>
+            <div class="sk-card mb-4">
+                <div class="sk-card-header navy">
+                    <div class="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-ticket-detailed-fill text-amber"></i>
+                            <code style="background:rgba(245,166,35,.15);color:var(--sk-amber);padding:.2rem .6rem;border-radius:4px;font-size:.85rem;font-weight:700;">
+                                @Model.TicketReference
+                            </code>
                         </div>
-                        <button type="submit" class="btn btn-success">Mark as Resolved</button>
-                    </form>
+                        <div class="d-flex gap-2">
+                            <span class="sk-badge @priCss">@Model.Priority</span>
+                            <span class="sk-badge @statusCss">@Model.Status</span>
+                        </div>
+                    </div>
+                </div>
 
+                <div class="sk-card-body">
+                    <h4 class="font-display fw-800 mb-1" style="color:var(--sk-navy);">@Model.Subject</h4>
+                    <p style="color:var(--sk-text-muted);font-size:.875rem;margin-bottom:1.5rem;">@Model.Category</p>
+
+                    <p style="line-height:1.7;color:var(--sk-text);">@Model.Description</p>
+
+                    <hr class="divider">
+
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <p class="sk-form-label">Submitted By</p>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:32px;height:32px;border-radius:50%;background:var(--sk-navy-3);display:flex;align-items:center;justify-content:center;color:var(--sk-amber);font-size:.75rem;font-weight:700;flex-shrink:0;">
+                                    @(Model.ComplainantName?.Substring(0,1).ToUpper() ?? "?")
+                                </div>
+                                <span style="font-weight:600;">@(Model.ComplainantName ?? Model.ComplainantId)</span>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6">
+                            <p class="sk-form-label">Assigned To</p>
+                            @if (Model.AssignedAgentName is not null)
+                            {
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width:32px;height:32px;border-radius:50%;background:rgba(34,197,94,.15);display:flex;align-items:center;justify-content:center;color:var(--sk-green);font-size:.75rem;font-weight:700;flex-shrink:0;">
+                                        @Model.AssignedAgentName.Substring(0,1).ToUpper()
+                                    </div>
+                                    <span style="font-weight:600;color:var(--sk-green);">@Model.AssignedAgentName</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <span style="color:var(--sk-text-muted);">
+                                    <i class="bi bi-dash-circle me-1"></i>Unassigned
+                                </span>
+                            }
+                        </div>
+
+                        @if (Model.TripId.HasValue)
+                        {
+                            <div class="col-sm-6">
+                                <p class="sk-form-label">Trip</p>
+                                <span class="fw-600">#@Model.TripId</span>
+                            </div>
+                        }
+
+                        @if (Model.DriverName is not null)
+                        {
+                            <div class="col-sm-6">
+                                <p class="sk-form-label">Driver</p>
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-car-front-fill" style="color:var(--sk-amber)"></i>
+                                    <span class="fw-600">@Model.DriverName</span>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="col-sm-6">
+                            <p class="sk-form-label">Submitted</p>
+                            <span>@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</span>
+                        </div>
+
+                        @if (Model.ResolvedAt.HasValue)
+                        {
+                            <div class="col-sm-6">
+                                <p class="sk-form-label">Resolved At</p>
+                                <span style="color:var(--sk-green);font-weight:600;">
+                                    <i class="bi bi-check-circle me-1"></i>@Model.ResolvedAt.Value.ToString("dd MMM yyyy, HH:mm")
+                                </span>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(Model.ResolutionNotes))
+                        {
+                            <div class="col-12">
+                                <p class="sk-form-label">Resolution Notes</p>
+                                <div class="sk-alert sk-alert-success">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span>@Model.ResolutionNotes</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
-        }
 
-        @if (User.IsInRole("SuperAdmin"))
-        {
-            <a asp-action="Assign" asp-route-id="@Model.Id" class="btn btn-outline-primary mt-3">
-                Reassign this Ticket
-            </a>
-        }
+            @if (User.IsInRole("Admin") && !isResolved)
+            {
+                <div class="sk-card mb-4">
+                    <div class="sk-card-header">
+                        <i class="bi bi-sliders text-amber"></i>
+                        <span>Actions</span>
+                    </div>
+                    <div class="sk-card-body">
 
+                        <div class="mb-4">
+                            <label class="sk-form-label mb-2 d-block">Update Status</label>
+                            <form method="post" asp-action="UpdateStatus" class="d-flex gap-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="complaintId" value="@Model.Id" />
+                                <select name="newStatus" class="sk-form-control" style="max-width:220px;">
+                                    @foreach (var status in Enum.GetValues<ComplaintStatus>())
+                                    {
+                                        if (status == ComplaintStatus.Resolved || status == ComplaintStatus.Closed)
+                                            continue;
+                                        <option value="@((int)status)" selected="@(Model.Status == status)">@status</option>
+                                    }
+                                </select>
+                                <button type="submit" class="btn btn-sk-navy text-nowrap">Save Status</button>
+                            </form>
+                        </div>
+
+                        <hr class="divider">
+
+                        <label class="sk-form-label mb-2 d-block">Resolve Ticket</label>
+                        <form method="post" asp-action="Resolve">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="complaintId" value="@Model.Id" />
+                            <div class="sk-form-group">
+                                <textarea name="resolutionNotes" class="sk-form-control" rows="3"
+                                          placeholder="Describe how the complaint was resolved…" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-sk-success">
+                                <i class="bi bi-check-circle me-2"></i>Mark as Resolved
+                            </button>
+                        </form>
+
+                    </div>
+                </div>
+            }
+
+            @if (User.IsInRole("SuperAdmin"))
+            {
+                <a asp-action="Assign" asp-route-id="@Model.Id" class="btn btn-sk-outline mt-1">
+                    <i class="bi bi-person-plus-fill me-2"></i>Reassign this Ticket
+                </a>
+            }
+
+        </div>
     </div>
 </div>

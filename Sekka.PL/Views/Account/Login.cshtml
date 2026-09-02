@@ -1,80 +1,65 @@
-﻿@using Sekka.BLL.ViewModels.AccountVM
+@using Sekka.BLL.ViewModels.AccountVM
 @model LoginVM
 
 @{
-    ViewData["Title"] = "Login";
+    ViewData["Title"] = "Sign in";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-5">
+<div class="sk-auth-wrap">
+    <div class="container py-5">
+        <div class="sk-auth-card">
 
-            <h2 class="text-center mb-4">Login</h2>
+            <div class="sk-auth-logo">
+                Sekk<span class="accent">a</span>
+            </div>
 
-            <form asp-action="Login" method="post">
+            <h2 class="text-center fw-700 mb-1" style="font-size:1.35rem;">Welcome back</h2>
+            <p class="text-center text-muted mb-4" style="font-size:.875rem;">Sign in to your account to continue</p>
 
-                <div asp-validation-summary="ModelOnly"
-                     class="text-danger mb-3">
+            <div asp-validation-summary="ModelOnly" class="sk-alert sk-alert-danger"></div>
+
+            <form asp-action="Login" method="post" autocomplete="on">
+
+                <div class="sk-form-group">
+                    <label asp-for="UserName" class="sk-form-label">Username</label>
+                    <input asp-for="UserName" class="sk-form-control" placeholder="Enter your username" autocomplete="username" />
+                    <span asp-validation-for="UserName" class="text-danger" style="font-size:.8rem;"></span>
                 </div>
 
-                <div class="mb-3">
-                    <label asp-for="UserName" class="form-label"></label>
-
-                    <input asp-for="UserName"
-                           class="form-control"
-                           placeholder="Enter your username" />
-
-                    <span asp-validation-for="UserName"
-                          class="text-danger">
-                    </span>
+                <div class="sk-form-group">
+                    <label asp-for="Password" class="sk-form-label">Password</label>
+                    <input asp-for="Password" class="sk-form-control" type="password" placeholder="Enter your password" autocomplete="current-password" />
+                    <span asp-validation-for="Password" class="text-danger" style="font-size:.8rem;"></span>
                 </div>
 
-                <div class="mb-3">
-                    <label asp-for="Password" class="form-label"></label>
-
-                    <input asp-for="Password"
-                           class="form-control"
-                           placeholder="Enter your password" />
-
-                    <span asp-validation-for="Password"
-                          class="text-danger">
-                    </span>
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div class="form-check mb-0">
+                        <input asp-for="RememberMe" class="form-check-input" id="rememberMe" />
+                        <label asp-for="RememberMe" class="form-check-label" for="rememberMe" style="font-size:.875rem;">Remember me</label>
+                    </div>
                 </div>
 
-                <div class="form-check mb-3">
-                    <input asp-for="RememberMe"
-                           class="form-check-input" />
-
-                    <label asp-for="RememberMe"
-                           class="form-check-label">
-                    </label>
-                </div>
-
-                <button type="submit"
-                        class="btn btn-primary w-100">
-                    Login
+                <button type="submit" class="btn btn-sk-primary w-100 btn-lg mb-3">
+                    Sign in
                 </button>
 
             </form>
 
-            <div class="text-center mt-3">
-                <span>Don't have an account?</span>
+            <div class="sk-auth-divider">or</div>
 
-                <a asp-action="Register">
-                    Register
-                </a>
-            </div>
-            <form asp-controller="Account"
-                  asp-action="GoogleLogin"
-                  method="post">
-
+            <form asp-controller="Account" asp-action="GoogleLogin" method="post">
                 @Html.AntiForgeryToken()
-
-                <button type="submit">
+                <button type="submit" class="sk-google-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                     Continue with Google
                 </button>
-
             </form>
+
+            <p class="text-center mt-4 mb-0" style="font-size:.875rem;color:var(--sk-text-muted);">
+                Don't have an account?
+                <a asp-action="Register" class="fw-600 text-amber" style="text-decoration:none;">Create one</a>
+            </p>
 
         </div>
     </div>

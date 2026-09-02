@@ -4,153 +4,173 @@
     ViewData["Title"] = "My Tickets";
 }
 
-<h2 class="mb-4">My Assigned Tickets</h2>
+<div class="container py-2">
 
-@if (TempData["SuccessMessage"] is string succ)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @succ <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-@if (TempData["ErrorMessage"] is string err)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @err <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-
-@if (!Model.Any())
-{
-    <div class="text-center text-muted py-5">
-        <p class="fs-5">No tickets assigned to you yet.</p>
-    </div>
-}
-else
-{
-    <div class="row g-4">
-        @foreach (var c in Model)
+    <div class="sk-page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+            <h1 class="fs-3">My Tickets</h1>
+            <p class="subtitle">Complaints assigned to you.</p>
+        </div>
+        @if (Model.Any())
         {
-            var priClass = c.Priority switch
+            <span class="sk-badge sk-pill-open">@Model.Count() open</span>
+        }
+    </div>
+
+    @if (TempData["SuccessMessage"] is string succ)
+    {
+        <div class="sk-alert sk-alert-success mb-4">
+            <i class="bi bi-check-circle-fill"></i><span>@succ</span>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] is string err)
+    {
+        <div class="sk-alert sk-alert-danger mb-4">
+            <i class="bi bi-exclamation-triangle-fill"></i><span>@err</span>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="sk-empty sk-card py-5">
+            <span class="icon">📭</span>
+            <h5 class="font-display" style="color:var(--sk-navy)">Nothing assigned yet</h5>
+            <p>You have no tickets assigned to you right now.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var c in Model)
             {
-                ComplaintPriority.Critical => "danger",
-                ComplaintPriority.High     => "warning",
-                ComplaintPriority.Medium   => "info",
-                _                          => "secondary"
-            };
-            var statusClass = c.Status switch
-            {
-                ComplaintStatus.Open      => "primary",
-                ComplaintStatus.InReview  => "info",
-                ComplaintStatus.Escalated => "warning",
-                ComplaintStatus.Resolved  => "success",
-                ComplaintStatus.Closed    => "secondary",
-                _                         => "secondary"
-            };
-            bool isResolved = c.Status == ComplaintStatus.Resolved
-                           || c.Status == ComplaintStatus.Closed;
+                var statusCss = c.Status switch {
+                    ComplaintStatus.Open      => "sk-pill-open",
+                    ComplaintStatus.InReview  => "sk-pill-inreview",
+                    ComplaintStatus.Escalated => "sk-pill-escalated",
+                    ComplaintStatus.Resolved  => "sk-pill-resolved",
+                    ComplaintStatus.Closed    => "sk-pill-closed",
+                    _                         => ""
+                };
+                var priCss = c.Priority switch {
+                    ComplaintPriority.Critical => "sk-pri-critical",
+                    ComplaintPriority.High     => "sk-pri-high",
+                    ComplaintPriority.Medium   => "sk-pri-medium",
+                    _                          => "sk-pri-low"
+                };
+                bool isResolved = c.Status == ComplaintStatus.Resolved
+                               || c.Status == ComplaintStatus.Closed;
 
-            <div class="col-12">
-                <div class="card shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>
-                            <code class="me-2">@c.TicketReference</code>
-                            <span class="badge bg-@priClass">@c.Priority</span>
-                            <span class="badge bg-@statusClass ms-1">@c.Status</span>
-                        </span>
-                        <small class="text-muted">@c.CreatedAt.ToString("dd MMM yyyy")</small>
-                    </div>
+                <div class="col-12">
+                    <div class="sk-card sk-ride-card">
+                        <div class="sk-card-body">
 
-                    <div class="card-body">
-                        <h5 class="card-title">@c.Subject</h5>
-                        <p class="card-text text-muted">@c.Description</p>
+                            <div class="d-flex align-items-start justify-content-between gap-2 mb-3 flex-wrap">
+                                <div>
+                                    <code style="background:var(--sk-navy);color:var(--sk-amber);padding:.2rem .55rem;border-radius:4px;font-size:.8rem;font-weight:700;margin-right:.5rem;">
+                                        @c.TicketReference
+                                    </code>
+                                    <span class="sk-badge @priCss me-1">@c.Priority</span>
+                                    <span class="sk-badge @statusCss">@c.Status</span>
+                                </div>
+                                <span style="font-size:.8rem;color:var(--sk-text-muted);">
+                                    <i class="bi bi-calendar3 me-1"></i>@c.CreatedAt.ToString("dd MMM yyyy")
+                                </span>
+                            </div>
 
-                        <dl class="row small mb-0">
-                            <dt class="col-sm-3">Category</dt>
-                            <dd class="col-sm-9">@c.Category</dd>
+                            <h5 class="fw-700 mb-1" style="color:var(--sk-navy);">@c.Subject</h5>
+                            <p style="color:var(--sk-text-muted);font-size:.875rem;line-height:1.6;margin-bottom:1rem;">@c.Description</p>
 
-                            @* ── Complainant ── *@
-                            <dt class="col-sm-3">Submitted By</dt>
-                            <dd class="col-sm-9">
-                                @(c.ComplainantName ?? c.ComplainantId)
-                            </dd>
-
-                            @* ── Driver ── *@
-                            @if (c.DriverName is not null)
-                            {
-                                <dt class="col-sm-3">Driver</dt>
-                                <dd class="col-sm-9">@c.DriverName</dd>
-                            }
-                            else if (c.TripId.HasValue)
-                            {
-                                <dt class="col-sm-3">Trip</dt>
-                                <dd class="col-sm-9">#@c.TripId</dd>
-                            }
+                            <div class="row g-2" style="font-size:.84rem;">
+                                <div class="col-sm-4">
+                                    <span class="sk-form-label d-block">Category</span>
+                                    <span>@c.Category</span>
+                                </div>
+                                <div class="col-sm-4">
+                                    <span class="sk-form-label d-block">Submitted By</span>
+                                    <span>@(c.ComplainantName ?? c.ComplainantId)</span>
+                                </div>
+                                @if (c.DriverName is not null)
+                                {
+                                    <div class="col-sm-4">
+                                        <span class="sk-form-label d-block">Driver</span>
+                                        <span><i class="bi bi-car-front me-1 text-amber"></i>@c.DriverName</span>
+                                    </div>
+                                }
+                                else if (c.TripId.HasValue)
+                                {
+                                    <div class="col-sm-4">
+                                        <span class="sk-form-label d-block">Trip</span>
+                                        <span>#@c.TripId</span>
+                                    </div>
+                                }
+                            </div>
 
                             @if (!string.IsNullOrEmpty(c.ResolutionNotes))
                             {
-                                <dt class="col-sm-3">Resolution</dt>
-                                <dd class="col-sm-9">@c.ResolutionNotes</dd>
+                                <div class="sk-alert sk-alert-success mt-3">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span>@c.ResolutionNotes</span>
+                                </div>
                             }
-                        </dl>
-                    </div>
+                        </div>
 
-                    @if (!isResolved)
-                    {
-                        <div class="card-footer bg-light">
-                            <div class="row g-2 align-items-end">
-
-                                <div class="col-md-6">
-                                    <form method="post" asp-action="UpdateStatus" class="d-flex gap-2">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="complaintId" value="@c.Id" />
-                                        <select name="newStatus" class="form-select form-select-sm">
-                                            @foreach (var status in Enum.GetValues<ComplaintStatus>())
-                                            {
-                                                if (status == ComplaintStatus.Resolved || status == ComplaintStatus.Closed)
-                                                    continue;
-                                                <option value="@((int)status)" selected="@(c.Status == status)">@status</option>
-                                            }
-                                        </select>
-                                        <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap">
-                                            Update Status
-                                        </button>
-                                    </form>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <button class="btn btn-sm btn-success w-100"
-                                            data-bs-toggle="collapse"
-                                            data-bs-target="#resolve-@c.Id">
-                                        Mark as Resolved
-                                    </button>
-                                </div>
-
-                                <div class="col-12 collapse" id="resolve-@c.Id">
-                                    <form method="post" asp-action="Resolve" class="mt-2">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="complaintId" value="@c.Id" />
-                                        <div class="mb-2">
-                                            <textarea name="resolutionNotes" class="form-control form-control-sm"
-                                                      rows="2" placeholder="Enter resolution notes…" required></textarea>
-                                        </div>
-                                        <button type="submit" class="btn btn-sm btn-success">Submit Resolution</button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                        @if (!isResolved)
+                        {
+                            <div class="sk-card-footer">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-6">
+                                        <form method="post" asp-action="UpdateStatus" class="d-flex gap-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="complaintId" value="@c.Id" />
+                                            <select name="newStatus" class="sk-form-control" style="font-size:.85rem;padding:.5rem .8rem;">
+                                                @foreach (var status in Enum.GetValues<ComplaintStatus>())
+                                                {
+                                                    if (status == ComplaintStatus.Resolved || status == ComplaintStatus.Closed)
+                                                        continue;
+                                                    <option value="@((int)status)" selected="@(c.Status == status)">@status</option>
+                                                }
+                                            </select>
+                                            <button type="submit" class="btn btn-sk-navy btn-sm text-nowrap">Update</button>
+                                        </form>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button class="btn btn-sk-success btn-sm w-100"
                                                 data-bs-toggle="collapse"
-                                                data-bs-target="#resolve-@c.Id">Cancel</button>
-                                    </form>
+                                                data-bs-target="#resolve-@c.Id">
+                                            <i class="bi bi-check-circle me-1"></i>Mark as Resolved
+                                        </button>
+                                    </div>
+                                    <div class="col-12 collapse" id="resolve-@c.Id">
+                                        <form method="post" asp-action="Resolve" class="mt-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="complaintId" value="@c.Id" />
+                                            <div class="sk-form-group">
+                                                <textarea name="resolutionNotes" class="sk-form-control"
+                                                          rows="2" placeholder="Enter resolution notes…" required></textarea>
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <button type="submit" class="btn btn-sk-success btn-sm">Submit Resolution</button>
+                                                <button type="button" class="btn btn-sk-outline btn-sm"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#resolve-@c.Id">Cancel</button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
-
                             </div>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="card-footer bg-light text-success small">
-                            &#10003; Resolved on @(c.ResolvedAt?.ToString("dd MMM yyyy") ?? "—")
-                        </div>
-                    }
+                        }
+                        else
+                        {
+                            <div class="sk-card-footer">
+                                <span style="color:var(--sk-green);font-weight:600;font-size:.85rem;">
+                                    <i class="bi bi-check-circle-fill me-1"></i>
+                                    Resolved on @(c.ResolvedAt?.ToString("dd MMM yyyy") ?? "—")
+                                </span>
+                            </div>
+                        }
+                    </div>
                 </div>
-            </div>
-        }
-    </div>
-}
+            }
+        </div>
+    }
+</div>

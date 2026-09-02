@@ -1,68 +1,93 @@
-﻿@model CreateAdminVM
+@model CreateAdminVM
 
 @{
-    ViewData["Title"] = "Create Admin";
+    ViewData["Title"] = "Add Admin";
 }
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Create New Admin</h4>
+<div class="sk-page">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+
+                <div class="sk-page-header">
+                    <a asp-action="Index"
+                       class="d-inline-flex align-items-center gap-2 mb-3"
+                       style="color:var(--sk-text-muted);font-size:.85rem;font-weight:500;text-decoration:none;">
+                        <i class="bi bi-arrow-left" style="font-size:1rem;"></i> Back to Admins
+                    </a>
+                    <h1 style="font-size:1.75rem;">New Admin Account</h1>
+                    <p class="subtitle">Create a platform administrator with full dashboard access.</p>
                 </div>
-                <div class="card-body">
 
-                    <form asp-action="Create" method="post">
-                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <div asp-validation-summary="ModelOnly" class="sk-alert sk-alert-danger"></div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="FullName" class="form-label">Full Name</label>
-                                <input asp-for="FullName" class="form-control" placeholder="Enter full name" />
-                                <span asp-validation-for="FullName" class="text-danger small"></span>
+                <form asp-action="Create" method="post">
+
+                    <div class="sk-card mb-4">
+                        <div class="sk-card-header navy">
+                            <i class="bi bi-person-badge" style="color:var(--sk-amber);"></i>
+                            Identity
+                        </div>
+                        <div class="sk-card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="FullName" class="sk-label">Full Name</label>
+                                    <input asp-for="FullName" class="sk-input" placeholder="e.g. Ahmed Hassan" />
+                                    <span asp-validation-for="FullName" class="sk-field-error"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="UserName" class="sk-label">Username</label>
+                                    <input asp-for="UserName" class="sk-input" placeholder="e.g. ahmed.hassan" />
+                                    <span asp-validation-for="UserName" class="sk-field-error"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Email" class="sk-label">Email</label>
+                                    <input asp-for="Email" type="email" class="sk-input" placeholder="admin@sekka.app" />
+                                    <span asp-validation-for="Email" class="sk-field-error"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="PhoneNumber" class="sk-label">Phone</label>
+                                    <input asp-for="PhoneNumber" type="tel" class="sk-input" placeholder="01xxxxxxxxx" />
+                                    <span asp-validation-for="PhoneNumber" class="sk-field-error"></span>
+                                </div>
+                                <div class="col-12">
+                                    <label asp-for="Address" class="sk-label">Address</label>
+                                    <input asp-for="Address" class="sk-input" placeholder="City, Street..." />
+                                    <span asp-validation-for="Address" class="sk-field-error"></span>
+                                </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="UserName" class="form-label">Username</label>
-                                <input asp-for="UserName" class="form-control" placeholder="Enter username" />
-                                <span asp-validation-for="UserName" class="text-danger small"></span>
+                    <div class="sk-card mb-4">
+                        <div class="sk-card-header navy">
+                            <i class="bi bi-shield-lock" style="color:var(--sk-amber);"></i>
+                            Security
+                        </div>
+                        <div class="sk-card-body">
+                            <div class="sk-alert sk-alert-warning mb-3"
+                                 style="font-size:.82rem;">
+                                <i class="bi bi-info-circle-fill"></i>
+                                The admin will receive an email to change this password on first login.
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label asp-for="Password" class="sk-label">Temporary Password</label>
+                                    <input asp-for="Password" type="password" class="sk-input" placeholder="Min. 8 characters" />
+                                    <span asp-validation-for="Password" class="sk-field-error"></span>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Email" class="form-label">Email Address</label>
-                                <input asp-for="Email" type="email" class="form-control" placeholder="example@domain.com" />
-                                <span asp-validation-for="Email" class="text-danger small"></span>
-                            </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <a asp-action="Index" class="btn btn-sk-outline">Cancel</a>
+                        <button type="submit" class="btn btn-sk-primary d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-shield-check"></i> Create Admin
+                        </button>
+                    </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="PhoneNumber" class="form-label">Phone Number</label>
-                                <input asp-for="PhoneNumber" type="tel" class="form-control" placeholder="01xxxxxxxxx" />
-                                <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label asp-for="Address" class="form-label">Address</label>
-                            <input asp-for="Address" class="form-control" placeholder="Enter address" />
-                            <span asp-validation-for="Address" class="text-danger small"></span>
-                        </div>
-
-                        <div class="mb-4">
-                            <label asp-for="Password" class="form-label">Password</label>
-                            <input asp-for="Password" type="password" class="form-control" placeholder="Enter secure password" />
-                            <span asp-validation-for="Password" class="text-danger small"></span>
-                        </div>
-
-                        <div class="d-flex justify-content-between border-top pt-3">
-                            <button type="submit" class="btn btn-success px-4">Create Admin</button>
-                            <a asp-action="Index" class="btn btn-secondary px-4">Cancel</a>
-                        </div>
-                    </form>
-
-                </div>
+                </form>
             </div>
         </div>
     </div>

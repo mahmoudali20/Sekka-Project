@@ -1,86 +1,96 @@
-﻿@model DriverEditVM
+@model DriverEditVM
 
 @{
     ViewData["Title"] = "Edit Driver";
 }
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Edit Driver Details</h4>
+<div class="sk-page">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+
+                <div class="sk-page-header">
+                    <a asp-action="Index"
+                       class="d-inline-flex align-items-center gap-2 mb-3"
+                       style="color:var(--sk-text-muted);font-size:.85rem;font-weight:500;text-decoration:none;">
+                        <i class="bi bi-arrow-left" style="font-size:1rem;"></i> Back to Drivers
+                    </a>
+                    <h1 style="font-size:1.75rem;">Edit Driver</h1>
+                    <p class="subtitle">Update account and professional details for this driver.</p>
                 </div>
-                <div class="card-body">
 
-                 
-                    @if (TempData["ErrorMessage"] != null)
-                    {
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            @TempData["ErrorMessage"]
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="sk-alert sk-alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        @TempData["ErrorMessage"]
+                    </div>
+                }
+
+                <form asp-action="Edit" method="post">
+                    <div asp-validation-summary="ModelOnly" class="sk-alert sk-alert-danger"></div>
+
+                    <input type="hidden" name="id" value="@Context.GetRouteValue("id")" />
+
+                    <div class="sk-card mb-4">
+                        <div class="sk-card-header navy">
+                            <i class="bi bi-person-circle" style="color:var(--sk-amber);"></i>
+                            Account Information
                         </div>
-                    }
-
-                    <form asp-action="Edit" method="post">
-                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-                        
-                    
-                        <input type="hidden" name="id" value="@Context.GetRouteValue("id")" />
-
-                      
-                        <h5 class="text-secondary border-bottom pb-2 mb-3">Account Information</h5>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="UserName" class="form-label">Username</label>
-                                <input asp-for="UserName" class="form-control" placeholder="Enter username" />
-                                <span asp-validation-for="UserName" class="text-danger small"></span>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Email" class="form-label">Email Address</label>
-                                <input asp-for="Email" type="email" class="form-control" placeholder="example@domain.com" />
-                                <span asp-validation-for="Email" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="PhoneNumber" class="form-label">Phone Number</label>
-                                <input asp-for="PhoneNumber" type="tel" class="form-control" placeholder="Enter phone number" />
-                                <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Address" class="form-label">Address</label>
-                                <input asp-for="Address" class="form-control" placeholder="Enter current address" />
-                                <span asp-validation-for="Address" class="text-danger small"></span>
+                        <div class="sk-card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="UserName" class="sk-label">Username</label>
+                                    <input asp-for="UserName" class="sk-input" placeholder="Enter username" />
+                                    <span asp-validation-for="UserName" class="sk-field-error"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Email" class="sk-label">Email Address</label>
+                                    <input asp-for="Email" type="email" class="sk-input" placeholder="example@domain.com" />
+                                    <span asp-validation-for="Email" class="sk-field-error"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="PhoneNumber" class="sk-label">Phone Number</label>
+                                    <input asp-for="PhoneNumber" type="tel" class="sk-input" placeholder="01xxxxxxxxx" />
+                                    <span asp-validation-for="PhoneNumber" class="sk-field-error"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Address" class="sk-label">Address</label>
+                                    <input asp-for="Address" class="sk-input" placeholder="City, Street..." />
+                                    <span asp-validation-for="Address" class="sk-field-error"></span>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                     
-                        <h5 class="text-secondary border-bottom pb-2 mb-3 mt-4">Professional Information</h5>
-                        
-                        <div class="mb-4">
-                            <label asp-for="LicenseNumber" class="form-label">License Number</label>
-                            <input asp-for="LicenseNumber" class="form-control" placeholder="Enter license number" />
-                            <span asp-validation-for="LicenseNumber" class="text-danger small"></span>
+                    <div class="sk-card mb-4">
+                        <div class="sk-card-header navy">
+                            <i class="bi bi-card-list" style="color:var(--sk-amber);"></i>
+                            Professional Information
                         </div>
-
-                        <div class="d-flex justify-content-between border-top pt-3">
-                            <button type="submit" class="btn btn-success px-4">Save Changes</button>
-                            <a asp-action="Index" class="btn btn-secondary px-4">Cancel</a>
+                        <div class="sk-card-body">
+                            <div class="sk-form-group">
+                                <label asp-for="LicenseNumber" class="sk-label">License Number</label>
+                                <input asp-for="LicenseNumber" class="sk-input" placeholder="Enter license number" />
+                                <span asp-validation-for="LicenseNumber" class="sk-field-error"></span>
+                            </div>
                         </div>
-                    </form>
+                    </div>
 
-                </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <a asp-action="Index" class="btn btn-sk-outline">Cancel</a>
+                        <button type="submit"
+                                class="btn btn-sk-primary d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-floppy2-fill"></i> Save Changes
+                        </button>
+                    </div>
+
+                </form>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
-  
     <partial name="_ValidationScriptsPartial" />
 }

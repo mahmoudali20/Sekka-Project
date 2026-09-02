@@ -1,157 +1,188 @@
-﻿@model Sekka.BLL.ViewModels.TripVM.BookRideVM
+@model Sekka.BLL.ViewModels.TripVM.BookRideVM
 
 @{
     ViewData["Title"] = "Book a Ride";
 }
 
+@section HeadLinks {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<div class="container">
 
-<div class="container mt-5">
-    <h2>Request a Ride</h2>
+    <!-- Page Header -->
+    <div class="sk-page-header">
+        <h1>Book a ride</h1>
+        <p class="subtitle">Set your pickup and destination — we'll find you a driver.</p>
+    </div>
 
     @if (TempData["ErrorMessage"] != null)
     {
-        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+        <div class="sk-alert sk-alert-danger mb-4">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            @TempData["ErrorMessage"]
+        </div>
     }
 
-    <div class="row mt-4">
-        <div class="col-md-5">
-            <form asp-action="Book" method="post" id="bookingForm">
+    <div class="row g-4 align-items-start">
 
-                <input type="hidden" asp-for="PickupLat" id="PickupLat" />
-                <input type="hidden" asp-for="PickupLng" id="PickupLng" />
-                <input type="hidden" asp-for="DropoffLat" id="DropoffLat" />
-                <input type="hidden" asp-for="DropoffLng" id="DropoffLng" />
-                <input type="hidden" asp-for="DistanceInKm" id="DistanceInKm" />
+        <!-- ── Booking Form ── -->
+        <div class="col-lg-4">
+            <div class="sk-card">
+                <div class="sk-card-header navy">
+                    <i class="bi bi-car-front-fill"></i>
+                    Ride details
+                </div>
+                <div class="sk-card-body">
 
-                <div class="mb-3">
-                    <label class="form-label text-primary fw-bold"><i class="bi bi-geo-alt-fill"></i> Pickup Location</label>
-                    <div class="input-group">
-                        <input asp-for="PickupLocation" id="PickupLocation" class="form-control" placeholder="Locating you..." readonly />
-                        <button type="button" class="btn btn-outline-secondary" onclick="locateUser()">
-                            <i class="bi bi-crosshair"></i> GPS
+                    <form asp-action="Book" method="post" id="bookingForm">
+
+                        <input type="hidden" asp-for="PickupLat"    id="PickupLat" />
+                        <input type="hidden" asp-for="PickupLng"    id="PickupLng" />
+                        <input type="hidden" asp-for="DropoffLat"   id="DropoffLat" />
+                        <input type="hidden" asp-for="DropoffLng"   id="DropoffLng" />
+                        <input type="hidden" asp-for="DistanceInKm" id="DistanceInKm" />
+
+                        <!-- Pickup -->
+                        <div class="sk-form-group">
+                            <label class="sk-form-label">
+                                <span style="color:var(--sk-green);">●</span> Pickup location
+                            </label>
+                            <div class="sk-input-group">
+                                <input asp-for="PickupLocation" id="PickupLocation"
+                                       class="sk-form-control" placeholder="Locating you…" readonly />
+                                <button type="button" class="btn btn-sk-navy px-3" onclick="locateUser()" title="Use GPS">
+                                    <i class="bi bi-crosshair"></i>
+                                </button>
+                            </div>
+                            <div style="font-size:.78rem;color:var(--sk-text-muted);margin-top:.4rem;">
+                                Drag the blue pin on the map to fine-tune.
+                            </div>
+                            <span asp-validation-for="PickupLocation" class="text-danger" style="font-size:.8rem;"></span>
+                        </div>
+
+                        <!-- Dropoff -->
+                        <div class="sk-form-group">
+                            <label class="sk-form-label">
+                                <span style="color:var(--sk-red);">●</span> Destination
+                            </label>
+                            <div class="sk-input-group">
+                                <input asp-for="DropoffLocation" id="DropoffLocation"
+                                       class="sk-form-control" placeholder="e.g. Cairo University" />
+                                <button type="button" class="btn btn-sk-primary px-3" onclick="searchDropoff()">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="DropoffLocation" class="text-danger" style="font-size:.8rem;"></span>
+                        </div>
+
+                        <hr class="divider" />
+
+                        <!-- Fare estimate -->
+                        <div class="sk-form-group">
+                            <label class="sk-form-label">Estimated fare</label>
+                            <div class="d-flex align-items-center gap-3">
+                                <div>
+                                    <div class="sk-fare">
+                                        <span id="fareDisplay">—</span>
+                                        <span>EGP</span>
+                                    </div>
+                                    <div id="distanceText" style="font-size:.8rem;color:var(--sk-text-muted);margin-top:.2rem;"></div>
+                                </div>
+                            </div>
+                            <input asp-for="EstimatedFare" id="EstimatedFare" type="hidden" />
+                        </div>
+
+                        <button type="submit" class="btn btn-sk-primary w-100 btn-lg" id="submitBtn" disabled>
+                            <i class="bi bi-car-front-fill me-2"></i>Request ride
                         </button>
-                    </div>
-                    <small class="text-muted">You can drag the blue marker on the map to adjust.</small>
-                    <span asp-validation-for="PickupLocation" class="text-danger"></span>
-                </div>
 
-                <div class="mb-3">
-                    <label class="form-label text-danger fw-bold"><i class="bi bi-geo-fill"></i> Dropoff Location</label>
-                    <div class="input-group">
-                        <input asp-for="DropoffLocation" id="DropoffLocation" class="form-control" placeholder="e.g. Cairo University" />
-                        <button type="button" class="btn btn-danger" onclick="searchDropoff()">Search</button>
-                    </div>
-                    <span asp-validation-for="DropoffLocation" class="text-danger"></span>
-                </div>
+                    </form>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Estimated Fare (EGP)</label>
-                    <input asp-for="EstimatedFare" id="EstimatedFare" class="form-control bg-light" readonly />
-                    <small class="text-success fw-bold" id="distanceText"></small>
                 </div>
-
-                <button type="submit" class="btn btn-primary w-100 btn-lg" id="submitBtn" disabled>Request Ride</button>
-            </form>
+            </div>
         </div>
 
-        <div class="col-md-7">
-            <div id="map" style="height: 500px; width: 100%; border-radius: 10px; border: 2px solid #ddd;"></div>
+        <!-- ── Map ── -->
+        <div class="col-lg-8">
+            <div class="sk-map-wrap" style="height:520px;">
+                <div id="map" style="height:100%;width:100%;"></div>
+            </div>
         </div>
+
     </div>
 </div>
 
 @section Scripts {
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
-
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         var map = L.map('map').setView([30.0444, 31.2357], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        var pickupMarker, dropoffMarker;
+        var pickupMarker, dropoffMarker, routeLine;
 
         function locateUser() {
-            if (navigator.geolocation) {
-                document.getElementById('PickupLocation').value = "Locating you...";
-                navigator.geolocation.getCurrentPosition(function (position) {
-                    var lat = position.coords.latitude;
-                    var lng = position.coords.longitude;
-
-                    setPickup(lat, lng);
-                    map.setView([lat, lng], 15);
-                }, function (error) {
-                    alert("Please allow location access to get your pickup point.");
-                    document.getElementById('PickupLocation').value = "";
-                });
-            }
+            if (!navigator.geolocation) return;
+            document.getElementById('PickupLocation').value = 'Locating…';
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                setPickup(pos.coords.latitude, pos.coords.longitude);
+                map.setView([pos.coords.latitude, pos.coords.longitude], 15);
+            }, function () {
+                document.getElementById('PickupLocation').value = '';
+                alert('Please allow location access.');
+            });
         }
 
         locateUser();
 
         function setPickup(lat, lng) {
             if (pickupMarker) map.removeLayer(pickupMarker);
-
-            pickupMarker = L.marker([lat, lng], { draggable: true }).addTo(map)
-                .bindPopup("Pickup Location").openPopup();
-
+            pickupMarker = L.marker([lat, lng], { draggable: true })
+                .addTo(map).bindPopup('Pickup').openPopup();
             updatePickupData(lat, lng);
-
-            pickupMarker.on('dragend', function (e) {
-                var pos = pickupMarker.getLatLng();
-                updatePickupData(pos.lat, pos.lng);
+            pickupMarker.on('dragend', function () {
+                var p = pickupMarker.getLatLng();
+                updatePickupData(p.lat, p.lng);
             });
         }
 
         function updatePickupData(lat, lng) {
             document.getElementById('PickupLat').value = lat;
             document.getElementById('PickupLng').value = lng;
-
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-                .then(res => res.json())
-                .then(data => {
-                    document.getElementById('PickupLocation').value = data.display_name.split(',').slice(0, 3).join(',');
+            fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng)
+                .then(r => r.json()).then(d => {
+                    document.getElementById('PickupLocation').value =
+                        d.display_name.split(',').slice(0, 3).join(',');
                     calculateFare();
                 });
         }
 
         function searchDropoff() {
-            var query = document.getElementById('DropoffLocation').value;
-            if (!query) return;
-
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}, Egypt&limit=1`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.length > 0) {
-                        var lat = data[0].lat;
-                        var lng = data[0].lon;
-
-                        if (dropoffMarker) map.removeLayer(dropoffMarker);
-
-                        var redIcon = new L.Icon({
-                            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-                        });
-
-                        dropoffMarker = L.marker([lat, lng], { icon: redIcon }).addTo(map).bindPopup("Dropoff").openPopup();
-
-                        document.getElementById('DropoffLat').value = lat;
-                        document.getElementById('DropoffLng').value = lng;
-                        document.getElementById('DropoffLocation').value = data[0].display_name.split(',').slice(0, 3).join(',');
-
+            var q = document.getElementById('DropoffLocation').value;
+            if (!q) return;
+            fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q + ', Egypt') + '&limit=1')
+                .then(r => r.json()).then(data => {
+                    if (!data.length) { alert('Location not found. Try a different name.'); return; }
+                    var lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
+                    if (dropoffMarker) map.removeLayer(dropoffMarker);
+                    var redIcon = new L.Icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34], shadowSize: [41,41]
+                    });
+                    dropoffMarker = L.marker([lat, lng], { icon: redIcon }).addTo(map).bindPopup('Destination').openPopup();
+                    document.getElementById('DropoffLat').value = lat;
+                    document.getElementById('DropoffLng').value = lng;
+                    document.getElementById('DropoffLocation').value =
+                        data[0].display_name.split(',').slice(0, 3).join(',');
+                    if (pickupMarker) {
                         var group = new L.featureGroup([pickupMarker, dropoffMarker]);
-                        map.fitBounds(group.getBounds().pad(0.1));
-
-                        calculateFare();
-                    } else {
-                        alert("Location not found. Please try a different name.");
+                        map.fitBounds(group.getBounds().pad(0.15));
                     }
+                    calculateFare();
                 });
         }
 
@@ -160,26 +191,19 @@
             var pLng = document.getElementById('PickupLng').value;
             var dLat = document.getElementById('DropoffLat').value;
             var dLng = document.getElementById('DropoffLng').value;
+            if (!pLat || !pLng || !dLat || !dLng) return;
 
-            if (pLat && pLng && dLat && dLng) {
-                fetch(`https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=false`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.routes && data.routes.length > 0) {
-                            var distanceKm = (data.routes[0].distance / 1000).toFixed(2); 
-                            document.getElementById('DistanceInKm').value = distanceKm;
-                            document.getElementById('distanceText').innerText = `Distance: ${distanceKm} km`;
-
-                            var baseFare = 15;
-                            var perKmRate = 8;
-                            var estimated = baseFare + (distanceKm * perKmRate);
-
-                            document.getElementById('EstimatedFare').value = Math.ceil(estimated);
-
-                            document.getElementById('submitBtn').disabled = false;
-                        }
-                    });
-            }
+            fetch('https://router.project-osrm.org/route/v1/driving/' + pLng + ',' + pLat + ';' + dLng + ',' + dLat + '?overview=false')
+                .then(r => r.json()).then(data => {
+                    if (!data.routes || !data.routes.length) return;
+                    var km = (data.routes[0].distance / 1000).toFixed(2);
+                    document.getElementById('DistanceInKm').value = km;
+                    document.getElementById('distanceText').textContent = km + ' km';
+                    var fare = Math.ceil(15 + km * 8);
+                    document.getElementById('EstimatedFare').value = fare;
+                    document.getElementById('fareDisplay').textContent = fare;
+                    document.getElementById('submitBtn').disabled = false;
+                });
         }
     </script>
 }
