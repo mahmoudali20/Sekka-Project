@@ -5,6 +5,10 @@
 @{
     ViewData["Title"] = "My Ride History";
 
+    var completedRides = Model.Where(r => r.Status == RideStatus.Completed || r.Status == RideStatus.Cancelled)
+                             .OrderByDescending(r => r.RequestTime)
+                             .ToList();
+
     var complaintsByRide = ViewBag.ComplaintsByRide as Dictionary<int, HashSet<ComplaintCategory>>
                             ?? new Dictionary<int, HashSet<ComplaintCategory>>();
 
@@ -13,95 +17,308 @@
 
     string GetPillCss(ComplaintStatus status) => status switch
     {
-        ComplaintStatus.Open => "sk-pill-open",
-        ComplaintStatus.InReview => "sk-pill-inreview",
+        ComplaintStatus.Open      => "sk-pill-open",
+        ComplaintStatus.InReview  => "sk-pill-inreview",
         ComplaintStatus.Escalated => "sk-pill-escalated",
-        ComplaintStatus.Resolved => "sk-pill-resolved",
-        ComplaintStatus.Closed => "sk-pill-closed",
-        _ => "sk-pill-closed"
+        ComplaintStatus.Resolved  => "sk-pill-resolved",
+        ComplaintStatus.Closed    => "sk-pill-closed",
+        _                         => "sk-pill-closed"
     };
+
+    string GetStatusIcon(ComplaintStatus status) => status switch
+    {
+        ComplaintStatus.Open      => "bi-circle-fill",
+        ComplaintStatus.InReview  => "bi-clock-fill",
+        ComplaintStatus.Escalated => "bi-exclamation-triangle-fill",
+        ComplaintStatus.Resolved  => "bi-check-circle-fill",
+        ComplaintStatus.Closed    => "bi-x-circle-fill",
+        _                         => "bi-dash-circle"
+    };
+
+    // Count for header stat strip
+    int totalRides       = completedRides.Count(r => r.Status == RideStatus.Completed);
+    int cancelledRides   = completedRides.Count(r => r.Status == RideStatus.Cancelled);
+    int activeComplaints = complaintDetail.Values.Count(c => c.Status == ComplaintStatus.Open || c.Status == ComplaintStatus.InReview);
 }
 
 @section HeadLinks {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        /* ── Complaint drawer ── */
+        .sk-complaint-drawer {
+            display: none;
+            background: var(--sk-surface-2);
+            border-top: 1.5px solid var(--sk-border);
+            border-radius: 0 0 var(--sk-radius) var(--sk-radius);
+            overflow: hidden;
+        }
+        .sk-complaint-drawer.open { display: block; }
+
+        .sk-complaint-panel {
+            padding: 1.1rem 1.4rem 1.25rem;
+        }
+
+        .sk-complaint-panel + .sk-complaint-panel {
+            border-top: 1px solid var(--sk-border);
+        }
+
+        .sk-complaint-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            margin-bottom: .85rem;
+            flex-wrap: wrap;
+        }
+
+        .sk-complaint-type-label {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            font-weight: 700;
+            font-size: .85rem;
+            color: var(--sk-navy);
+            font-family: var(--font-display);
+        }
+
+        .sk-complaint-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .55rem 1.25rem;
+            font-size: .8rem;
+            color: var(--sk-text-muted);
+            margin-bottom: .9rem;
+        }
+
+        .sk-complaint-meta-row span {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+        }
+
+        .sk-resolution-box {
+            background: #ECFDF5;
+            border: 1px solid #6EE7B7;
+            border-radius: var(--sk-radius-sm);
+            padding: .85rem 1rem;
+            margin-top: .75rem;
+        }
+
+        .sk-resolution-box .res-label {
+            font-size: .72rem;
+            font-weight: 700;
+            color: var(--sk-green);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            display: flex;
+            align-items: center;
+            gap: .3rem;
+            margin-bottom: .35rem;
+        }
+
+        .sk-resolution-box .res-notes {
+            font-size: .875rem;
+            color: #065F46;
+            line-height: 1.55;
+            margin: 0;
+        }
+
+        .sk-complaint-desc {
+            font-size: .875rem;
+            color: var(--sk-text);
+            line-height: 1.55;
+            background: var(--sk-surface);
+            border: 1px solid var(--sk-border);
+            border-radius: var(--sk-radius-sm);
+            padding: .7rem .9rem;
+            margin-top: .35rem;
+        }
+
+        .sk-complaint-desc-label {
+            font-size: .72rem;
+            font-weight: 700;
+            color: var(--sk-text-muted);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-bottom: .3rem;
+        }
+
+        .sk-complaint-actions-row {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-top: .85rem;
+            flex-wrap: wrap;
+        }
+
+        /* drawer toggle button */
+        .sk-drawer-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            font-size: .78rem;
+            font-weight: 600;
+            font-family: var(--font-display);
+            padding: .4rem .7rem;
+            border-radius: var(--sk-radius-sm);
+            transition: background .15s, color .15s;
+        }
+        .sk-drawer-toggle:hover { background: var(--sk-surface-2); }
+        .sk-drawer-toggle.has-resolved { color: var(--sk-green); }
+        .sk-drawer-toggle.has-open     { color: #1E40AF; }
+        .sk-drawer-toggle.has-escalated{ color: #92400E; }
+        .sk-drawer-toggle .toggle-caret {
+            transition: transform .2s;
+            font-size: .7rem;
+        }
+        .sk-drawer-toggle.active .toggle-caret { transform: rotate(180deg); }
+
+        /* ride card subtle accent when resolved */
+        .sk-ride-card.has-resolved { border-left-color: var(--sk-green); }
+        .sk-ride-card.has-open     { border-left-color: #6366F1; }
+        .sk-ride-card.has-escalated{ border-left-color: #F59E0B; }
+
+        /* history stat strip */
+        .sk-history-header {
+            background: var(--sk-navy);
+            border-radius: var(--sk-radius) var(--sk-radius) 0 0;
+            padding: 1.4rem 1.6rem 1rem;
+            margin-bottom: 0;
+        }
+        .sk-history-header h1 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            color: #fff;
+            font-size: 1.3rem;
+            margin: 0 0 .2rem;
+        }
+        .sk-history-header .sub { color: rgba(255,255,255,.45); font-size: .82rem; margin:0; }
+
+        .sk-stat-mini-row {
+            display: flex;
+            gap: 0;
+            border-top: 1px solid rgba(255,255,255,.08);
+            margin-top: .9rem;
+        }
+        .sk-stat-mini {
+            flex: 1;
+            padding: .75rem 1rem .85rem;
+            border-right: 1px solid rgba(255,255,255,.07);
+        }
+        .sk-stat-mini:last-child { border-right: none; }
+        .sk-stat-mini .val {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: #fff;
+            line-height: 1.1;
+        }
+        .sk-stat-mini .val.green { color: #4ADE80; }
+        .sk-stat-mini .val.amber { color: var(--sk-amber); }
+        .sk-stat-mini .val.red   { color: #F87171; }
+        .sk-stat-mini .lbl {
+            font-size: .7rem;
+            color: rgba(255,255,255,.35);
+            margin-top: 2px;
+        }
+    </style>
 }
 
 <div class="container py-4">
 
-    @* ── Page Header ── *@
-    <div class="sk-page-header d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
-        <div>
-            <h1 class="fs-3">My Ride History</h1>
-            <p class="subtitle">All your past and current rides on Sekka.</p>
-        </div>
-        <span class="sk-badge sk-badge-requested fs-6 px-3 py-2">
-            <i class="bi bi-car-front me-1"></i> @Model.Count() Rides
-        </span>
-    </div>
-
-    @* ── Sekka Alerts ── *@
-    @if (TempData["Success"] is string successMsg || TempData["SuccessMessage"] is string successMsg2)
+    @* ── Alerts ── *@
+    @if (TempData["Success"] is string s1 || TempData["SuccessMessage"] is string s2)
     {
         var msg = TempData["Success"] as string ?? TempData["SuccessMessage"] as string;
-        <div class="sk-alert sk-alert-success alert-dismissible fade show mb-4" role="alert">
+        <div class="sk-alert sk-alert-success alert-dismissible fade show mb-3" role="alert">
             <i class="bi bi-check-circle-fill fs-5 me-2"></i>
             <div>@msg</div>
             <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
         </div>
     }
-    @if (TempData["Info"] is string infoMsg)
+    @if (TempData["Info"] is string info)
     {
-        <div class="sk-alert sk-alert-info alert-dismissible fade show mb-4" role="alert">
+        <div class="sk-alert sk-alert-info alert-dismissible fade show mb-3" role="alert">
             <i class="bi bi-info-circle-fill fs-5 me-2"></i>
-            <div>@infoMsg</div>
+            <div>@info</div>
             <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
         </div>
     }
-    @if (TempData["Error"] is string errorMsg)
+    @if (TempData["Error"] is string err)
     {
-        <div class="sk-alert sk-alert-danger alert-dismissible fade show mb-4" role="alert">
+        <div class="sk-alert sk-alert-danger alert-dismissible fade show mb-3" role="alert">
             <i class="bi bi-exclamation-triangle-fill fs-5 me-2"></i>
-            <div>@errorMsg</div>
+            <div>@err</div>
             <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
         </div>
     }
 
     @* ── Empty State ── *@
-    @if (!Model.Any())
+    @if (!completedRides.Any())
     {
-        <div class="sk-empty sk-card py-5">
-            <span class="icon">🛣️</span>
-            <h4 class="fw-bold text-navy">No rides yet</h4>
-            <p class="mb-3">You haven't requested any rides on Sekka yet.</p>
+        <div class="sk-empty sk-card py-5 text-center">
+            <div style="font-size:3rem; margin-bottom:.75rem;">🛣️</div>
+            <h4 class="fw-bold text-navy mb-1">No rides yet</h4>
+            <p class="text-muted mb-0">Your completed and cancelled rides will appear here.</p>
         </div>
     }
     else
     {
-        <div class="row g-4">
-            @foreach (var ride in Model.OrderByDescending(r => r.RequestTime))
+        @* ── Header stat block ── *@
+        <div class="sk-card mb-4" style="overflow:hidden;">
+            <div class="sk-history-header">
+                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+                    <div>
+                        <h1>My Ride History</h1>
+                        <p class="sub">All your past rides on Sekka — tap a complaint badge to see its details.</p>
+                    </div>
+                </div>
+                <div class="sk-stat-mini-row">
+                    <div class="sk-stat-mini">
+                        <div class="val">@totalRides</div>
+                        <div class="lbl">Completed</div>
+                    </div>
+                    <div class="sk-stat-mini">
+                        <div class="val red">@cancelledRides</div>
+                        <div class="lbl">Cancelled</div>
+                    </div>
+                    <div class="sk-stat-mini">
+                        <div class="val amber">@activeComplaints</div>
+                        <div class="lbl">Open tickets</div>
+                    </div>
+                    <div class="sk-stat-mini">
+                        <div class="val green">@complaintDetail.Values.Count(c => c.Status == ComplaintStatus.Resolved)</div>
+                        <div class="lbl">Resolved</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            @foreach (var ride in completedRides)
             {
                 var badgeCss = ride.Status switch
                 {
                     RideStatus.Completed => "sk-badge-completed",
                     RideStatus.Cancelled => "sk-badge-cancelled",
-                    RideStatus.Started => "sk-badge-started",
-                    RideStatus.Accepted => "sk-badge-accepted",
+                    RideStatus.Started   => "sk-badge-started",
+                    RideStatus.Accepted  => "sk-badge-accepted",
                     RideStatus.Requested => "sk-badge-requested",
-                    _ => "sk-badge-requested"
+                    _                    => "sk-badge-requested"
                 };
 
                 var canReport = ride.Status == RideStatus.Completed || ride.Status == RideStatus.Cancelled;
-
-                var canRate = ride.Status == RideStatus.Completed
-                           && ride.DriverId.HasValue
-                           && ride.Rating is null;
+                var canRate   = ride.Status == RideStatus.Completed && ride.DriverId.HasValue && ride.Rating is null;
 
                 string? driverName = ride.Driver?.User?.FullName;
 
                 complaintsByRide.TryGetValue(ride.RideID, out var filedCategories);
                 filedCategories ??= new HashSet<ComplaintCategory>();
 
-                bool hasGeneralComplaint = filedCategories.Any(c => c != ComplaintCategory.LostItem);
+                bool hasGeneralComplaint  = filedCategories.Any(c => c != ComplaintCategory.LostItem);
                 bool hasLostItemComplaint = filedCategories.Contains(ComplaintCategory.LostItem);
 
                 var generalComplaintKey = complaintDetail.Keys
@@ -111,12 +328,23 @@
 
                 complaintDetail.TryGetValue((ride.RideID, ComplaintCategory.LostItem), out var lostItemComplaint);
 
+                // Determine card accent
+                bool hasResolved  = (generalComplaint?.Status  == ComplaintStatus.Resolved)  || (lostItemComplaint?.Status == ComplaintStatus.Resolved);
+                bool hasEscalated = (generalComplaint?.Status  == ComplaintStatus.Escalated) || (lostItemComplaint?.Status == ComplaintStatus.Escalated);
+                bool hasOpenAny   = (generalComplaint?.Status  == ComplaintStatus.Open || generalComplaint?.Status == ComplaintStatus.InReview)
+                                 || (lostItemComplaint?.Status == ComplaintStatus.Open || lostItemComplaint?.Status == ComplaintStatus.InReview);
+
+                string cardAccent = hasEscalated ? "has-escalated" : hasResolved ? "has-resolved" : hasOpenAny ? "has-open" : "";
+                bool hasAnyComplaint = hasGeneralComplaint || hasLostItemComplaint;
+
                 <div class="col-12">
-                    <div class="sk-card sk-ride-card">
+                    <div class="sk-card sk-ride-card @cardAccent">
+
+                        @* ─── Card body ─── *@
                         <div class="sk-card-body p-4">
 
-                            @* Top row: status + date *@
-                            <div class="d-flex justify-content-between align-items-center mb-3">
+                            @* Top row *@
+                            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                                 <span class="sk-badge @badgeCss px-3 py-1 fs-6">
                                     @ride.Status
                                 </span>
@@ -126,7 +354,7 @@
                                 </small>
                             </div>
 
-                            @* Driver info *@
+                            @* Driver *@
                             @if (driverName is not null)
                             {
                                 <div class="sk-driver-box mb-3">
@@ -162,17 +390,16 @@
                                 </div>
                             </div>
 
-                            @* Distance / Fare / Rating *@
+                            @* Fare / Distance / Rating *@
                             <div class="row g-3 mb-3 pt-2 border-top">
                                 <div class="col-6 col-md-3">
                                     <div class="sk-form-label mb-0">Distance</div>
                                     <div class="fw-bold text-navy">@ride.DistanceInKm.ToString("F1") km</div>
                                 </div>
                                 <div class="col-6 col-md-3">
-                                    <div class="sk-form-label mb-0">Estimated Fare</div>
+                                    <div class="sk-form-label mb-0">Est. Fare</div>
                                     <div class="fw-bold text-navy">EGP @ride.EstimatedFare.ToString("F2")</div>
                                 </div>
-
                                 @if (ride.ActualFare.HasValue)
                                 {
                                     <div class="col-6 col-md-3">
@@ -180,12 +407,11 @@
                                         <div class="fw-bold text-success">EGP @ride.ActualFare.Value.ToString("F2")</div>
                                     </div>
                                 }
-
                                 @if (ride.Rating is not null)
                                 {
                                     <div class="col-6 col-md-3">
                                         <div class="sk-form-label mb-0">Your Rating</div>
-                                        <div class="fw-semibold" title="@ride.Rating.Score / 5">
+                                        <div class="fw-semibold">
                                             @for (int i = 1; i <= 5; i++)
                                             {
                                                 <span class="@(i <= ride.Rating.Score ? "text-amber" : "text-muted")">★</span>
@@ -208,77 +434,308 @@
                                 </div>
                             }
 
-                            @* Action Buttons *@
-                            @if (canReport || canRate)
+                            @* ─── Action bar ─── *@
+                            @if (canReport || canRate || hasAnyComplaint)
                             {
-                                <div class="d-flex flex-wrap align-items-center gap-2 pt-3 border-top">
+                                <div class="sk-ride-actions">
 
-                                    @* Rate Driver Button *@
+                                    @* Rate driver *@
                                     @if (canRate)
                                     {
-                                        <button type="button"
-                                                class="btn btn-sk-primary btn-sm"
+                                        <button type="button" class="btn btn-sk-primary btn-sm"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#rateModal-@ride.RideID">
                                             <i class="bi bi-star-fill me-1"></i> Rate Driver
                                         </button>
                                     }
 
-                                    @* General Complaint *@
-                                    @if (canReport)
+                                    @* General complaint quick button / file button *@
+                                    @if (hasGeneralComplaint && generalComplaint is not null)
                                     {
-                                        @if (hasGeneralComplaint && generalComplaint is not null)
-                                        {
-                                            var pillCss = GetPillCss(generalComplaint.Status);
-                                            <span class="sk-badge @pillCss d-inline-flex align-items-center gap-1 py-1 px-3"
-                                                  title="Ticket: @generalComplaint.TicketReference">
-                                                <i class="bi bi-flag-fill"></i>
+                                        var pillCss    = GetPillCss(generalComplaint.Status);
+                                        var statusIcon = GetStatusIcon(generalComplaint.Status);
+                                        var toggleCls  = generalComplaint.Status == ComplaintStatus.Resolved ? "has-resolved"
+                                                        : generalComplaint.Status == ComplaintStatus.Escalated ? "has-escalated"
+                                                        : "has-open";
+                                        <button class="sk-drawer-toggle @toggleCls"
+                                                type="button"
+                                                onclick="toggleDrawer('drawer-@ride.RideID', this)">
+                                            <span class="sk-badge @pillCss" style="font-size:.7rem; padding:.2rem .6rem;">
+                                                <i class="bi @statusIcon" style="font-size:.65rem;"></i>
                                                 Complaint — @generalComplaint.Status
-                                                <span class="badge bg-dark ms-1 text-white">#@generalComplaint.TicketReference</span>
+                                                <span class="badge bg-dark ms-1 text-white" style="font-size:.65rem;">#@generalComplaint.TicketReference</span>
                                             </span>
-                                        }
-                                        else
-                                        {
-                                            <a asp-controller="RideHistory"
-                                               asp-action="FileComplaint"
-                                               asp-route-rideId="@ride.RideID"
-                                               asp-route-category="@((int)ComplaintCategory.DriverBehavior)"
-                                               class="btn btn-sk-outline-danger btn-sm">
-                                                <i class="bi bi-flag-fill me-1"></i> File Complaint
-                                            </a>
-                                        }
+                                            <i class="bi bi-chevron-down toggle-caret"></i>
+                                        </button>
+                                    }
+                                    else if (canReport)
+                                    {
+                                        <a asp-controller="RideHistory"
+                                           asp-action="FileComplaint"
+                                           asp-route-rideId="@ride.RideID"
+                                           asp-route-category="@((int)ComplaintCategory.DriverBehavior)"
+                                           class="btn btn-sk-outline-danger btn-sm">
+                                            <i class="bi bi-flag-fill me-1"></i> File Complaint
+                                        </a>
+                                    }
 
-                                        @* Lost Item Complaint *@
-                                        @if (hasLostItemComplaint && lostItemComplaint is not null)
-                                        {
-                                            var lostPillCss = GetPillCss(lostItemComplaint.Status);
-                                            <span class="sk-badge @lostPillCss d-inline-flex align-items-center gap-1 py-1 px-3"
-                                                  title="Ticket: @lostItemComplaint.TicketReference">
-                                                <i class="bi bi-bag-x-fill"></i>
+                                    @* Lost Item complaint quick button / report button *@
+                                    @if (hasLostItemComplaint && lostItemComplaint is not null)
+                                    {
+                                        var lostPillCss    = GetPillCss(lostItemComplaint.Status);
+                                        var lostStatusIcon = GetStatusIcon(lostItemComplaint.Status);
+                                        var lostToggleCls  = lostItemComplaint.Status == ComplaintStatus.Resolved ? "has-resolved"
+                                                            : lostItemComplaint.Status == ComplaintStatus.Escalated ? "has-escalated"
+                                                            : "has-open";
+                                        <button class="sk-drawer-toggle @lostToggleCls"
+                                                type="button"
+                                                onclick="toggleDrawer('drawer-@ride.RideID', this)">
+                                            <span class="sk-badge @lostPillCss" style="font-size:.7rem; padding:.2rem .6rem;">
+                                                <i class="bi bi-bag-x-fill" style="font-size:.65rem;"></i>
                                                 Lost Item — @lostItemComplaint.Status
-                                                <span class="badge bg-dark ms-1 text-white">#@lostItemComplaint.TicketReference</span>
+                                                <span class="badge bg-dark ms-1 text-white" style="font-size:.65rem;">#@lostItemComplaint.TicketReference</span>
                                             </span>
-                                        }
-                                        else
-                                        {
-                                            <a asp-controller="RideHistory"
-                                               asp-action="FileComplaint"
-                                               asp-route-rideId="@ride.RideID"
-                                               asp-route-category="@((int)ComplaintCategory.LostItem)"
-                                               class="btn btn-sk-outline btn-sm text-warning border-warning">
-                                                <i class="bi bi-bag-x-fill me-1"></i> Report Lost Item
-                                            </a>
-                                        }
+                                            <i class="bi bi-chevron-down toggle-caret"></i>
+                                        </button>
+                                    }
+                                    else if (canReport)
+                                    {
+                                        <a asp-controller="RideHistory"
+                                           asp-action="FileComplaint"
+                                           asp-route-rideId="@ride.RideID"
+                                           asp-route-category="@((int)ComplaintCategory.LostItem)"
+                                           class="btn btn-sk-outline btn-sm text-warning border-warning">
+                                            <i class="bi bi-bag-x-fill me-1"></i> Report Lost Item
+                                        </a>
                                     }
 
                                 </div>
                             }
-
                         </div>
+
+                        @* ─── Complaint Drawer ─── *@
+                        @if (hasAnyComplaint)
+                        {
+                            <div class="sk-complaint-drawer" id="drawer-@ride.RideID">
+
+                                @* General Complaint Panel *@
+                                @if (hasGeneralComplaint && generalComplaint is not null)
+                                {
+                                    var isEditable = generalComplaint.Status == ComplaintStatus.Open
+                                                  || generalComplaint.Status == ComplaintStatus.InReview;
+                                    <div class="sk-complaint-panel">
+                                        <div class="sk-complaint-panel-header">
+                                            <div class="sk-complaint-type-label">
+                                                <i class="bi bi-flag-fill text-danger"></i>
+                                                Complaint
+                                                <span class="sk-badge @GetPillCss(generalComplaint.Status)" style="font-size:.72rem; padding:.2rem .65rem;">
+                                                    <i class="bi @GetStatusIcon(generalComplaint.Status)" style="font-size:.6rem;"></i>
+                                                    @generalComplaint.Status
+                                                </span>
+                                            </div>
+                                            @if (isEditable)
+                                            {
+                                                <div class="d-flex gap-2">
+                                                    <a asp-controller="RideHistory"
+                                                       asp-action="EditComplaint"
+                                                       asp-route-id="@generalComplaint.Id"
+                                                       class="btn btn-sk-outline btn-sm"
+                                                       title="Edit complaint">
+                                                        <i class="bi bi-pencil-fill me-1"></i> Edit
+                                                    </a>
+                                                    <form asp-controller="RideHistory"
+                                                          asp-action="DeleteComplaint"
+                                                          method="post"
+                                                          class="d-inline"
+                                                          onsubmit="return confirm('Withdraw this complaint? This cannot be undone.');">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@generalComplaint.Id" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Withdraw">
+                                                            <i class="bi bi-trash-fill"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        @* Meta *@
+                                        <div class="sk-complaint-meta-row">
+                                            <span>
+                                                <i class="bi bi-ticket-perforated-fill"></i>
+                                                Ticket <strong class="text-navy">#@generalComplaint.TicketReference</strong>
+                                            </span>
+                                            <span>
+                                                <i class="bi bi-tag-fill"></i>
+                                                @generalComplaint.Category.ToString().Replace("_", " ")
+                                            </span>
+                                            @if (generalComplaint.CreatedAt != default)
+                                            {
+                                                <span>
+                                                    <i class="bi bi-calendar3"></i>
+                                                    Filed @generalComplaint.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
+                                                </span>
+                                            }
+                                            <span>
+                                                @{
+                                                    var priCss = generalComplaint.Priority switch
+                                                    {
+                                                        ComplaintPriority.Critical => "sk-pri-critical",
+                                                        ComplaintPriority.High     => "sk-pri-high",
+                                                        ComplaintPriority.Medium   => "sk-pri-medium",
+                                                        _                          => "sk-pri-low"
+                                                    };
+                                                }
+                                                <span class="sk-badge @priCss" style="font-size:.68rem; padding:.18rem .55rem;">
+                                                    @generalComplaint.Priority Priority
+                                                </span>
+                                            </span>
+                                        </div>
+
+                                        @* Description *@
+                                        @if (!string.IsNullOrWhiteSpace(generalComplaint.Description))
+                                        {
+                                            <div class="sk-complaint-desc-label">Your description</div>
+                                            <div class="sk-complaint-desc">@generalComplaint.Description</div>
+                                        }
+
+                                        @* Resolution Notes — the key new section *@
+                                        @if (generalComplaint.Status == ComplaintStatus.Resolved
+                                          && !string.IsNullOrWhiteSpace(generalComplaint.ResolutionNotes))
+                                        {
+                                            <div class="sk-resolution-box">
+                                                <div class="res-label">
+                                                    <i class="bi bi-check-circle-fill"></i> Resolution from support
+                                                </div>
+                                                <p class="res-notes">@generalComplaint.ResolutionNotes</p>
+                                            </div>
+                                        }
+                                        else if (generalComplaint.Status == ComplaintStatus.Resolved)
+                                        {
+                                            <div class="sk-resolution-box">
+                                                <div class="res-label"><i class="bi bi-check-circle-fill"></i> Resolved</div>
+                                                <p class="res-notes text-muted fst-italic">No resolution notes were added by the agent.</p>
+                                            </div>
+                                        }
+                                        else if (generalComplaint.Status == ComplaintStatus.Escalated)
+                                        {
+                                            <div class="sk-alert sk-alert-warning py-2 mt-2 small">
+                                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                                Your complaint has been escalated and is under senior review. You will be notified of any updates.
+                                            </div>
+                                        }
+                                        else if (generalComplaint.Status == ComplaintStatus.InReview)
+                                        {
+                                            <div class="sk-alert sk-alert-info py-2 mt-2 small">
+                                                <i class="bi bi-clock-fill me-1"></i>
+                                                An agent is currently reviewing your complaint.
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                @* Lost Item Complaint Panel *@
+                                @if (hasLostItemComplaint && lostItemComplaint is not null)
+                                {
+                                    var isLostEditable = lostItemComplaint.Status == ComplaintStatus.Open
+                                                      || lostItemComplaint.Status == ComplaintStatus.InReview;
+                                    <div class="sk-complaint-panel">
+                                        <div class="sk-complaint-panel-header">
+                                            <div class="sk-complaint-type-label">
+                                                <i class="bi bi-bag-x-fill text-warning"></i>
+                                                Lost Item Report
+                                                <span class="sk-badge @GetPillCss(lostItemComplaint.Status)" style="font-size:.72rem; padding:.2rem .65rem;">
+                                                    <i class="bi @GetStatusIcon(lostItemComplaint.Status)" style="font-size:.6rem;"></i>
+                                                    @lostItemComplaint.Status
+                                                </span>
+                                            </div>
+                                            @if (isLostEditable)
+                                            {
+                                                <div class="d-flex gap-2">
+                                                    <a asp-controller="RideHistory"
+                                                       asp-action="EditComplaint"
+                                                       asp-route-id="@lostItemComplaint.Id"
+                                                       class="btn btn-sk-outline btn-sm">
+                                                        <i class="bi bi-pencil-fill me-1"></i> Edit
+                                                    </a>
+                                                    <form asp-controller="RideHistory"
+                                                          asp-action="DeleteComplaint"
+                                                          method="post"
+                                                          class="d-inline"
+                                                          onsubmit="return confirm('Withdraw this lost item report? This cannot be undone.');">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@lostItemComplaint.Id" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="bi bi-trash-fill"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        @* Meta *@
+                                        <div class="sk-complaint-meta-row">
+                                            <span>
+                                                <i class="bi bi-ticket-perforated-fill"></i>
+                                                Ticket <strong class="text-navy">#@lostItemComplaint.TicketReference</strong>
+                                            </span>
+                                            @if (lostItemComplaint.CreatedAt != default)
+                                            {
+                                                <span>
+                                                    <i class="bi bi-calendar3"></i>
+                                                    Filed @lostItemComplaint.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
+                                                </span>
+                                            }
+                                        </div>
+
+                                        @* Description *@
+                                        @if (!string.IsNullOrWhiteSpace(lostItemComplaint.Description))
+                                        {
+                                            <div class="sk-complaint-desc-label">What you reported</div>
+                                            <div class="sk-complaint-desc">@lostItemComplaint.Description</div>
+                                        }
+
+                                        @* Resolution Notes *@
+                                        @if (lostItemComplaint.Status == ComplaintStatus.Resolved
+                                          && !string.IsNullOrWhiteSpace(lostItemComplaint.ResolutionNotes))
+                                        {
+                                            <div class="sk-resolution-box">
+                                                <div class="res-label">
+                                                    <i class="bi bi-check-circle-fill"></i> Resolution from support
+                                                </div>
+                                                <p class="res-notes">@lostItemComplaint.ResolutionNotes</p>
+                                            </div>
+                                        }
+                                        else if (lostItemComplaint.Status == ComplaintStatus.Resolved)
+                                        {
+                                            <div class="sk-resolution-box">
+                                                <div class="res-label"><i class="bi bi-check-circle-fill"></i> Resolved</div>
+                                                <p class="res-notes text-muted fst-italic">No resolution notes were added by the agent.</p>
+                                            </div>
+                                        }
+                                        else if (lostItemComplaint.Status == ComplaintStatus.Escalated)
+                                        {
+                                            <div class="sk-alert sk-alert-warning py-2 mt-2 small">
+                                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                                This report has been escalated and is under senior review.
+                                            </div>
+                                        }
+                                        else if (lostItemComplaint.Status == ComplaintStatus.InReview)
+                                        {
+                                            <div class="sk-alert sk-alert-info py-2 mt-2 small">
+                                                <i class="bi bi-clock-fill me-1"></i>
+                                                An agent is reviewing your lost item report.
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                            </div>
+                        }
+
                     </div>
                 </div>
 
-                @* Rate Driver Modal *@
+                @* ─── Rate Driver Modal ─── *@
                 @if (canRate)
                 {
                     <div class="modal fade" id="rateModal-@ride.RideID" tabindex="-1"
@@ -300,12 +757,9 @@
                                         How was your ride from <strong>@ride.PickupLocation</strong>
                                         to <strong>@ride.DropoffLocation</strong>?
                                     </p>
-
                                     <form asp-controller="RideHistory" asp-action="RateDriver" method="post">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="RideId" value="@ride.RideID" />
-
-                                        @* Star picker *@
                                         <div class="mb-3 text-center">
                                             <div class="star-picker d-inline-flex flex-row-reverse gap-1 fs-2"
                                                  id="starPicker-@ride.RideID">
@@ -317,29 +771,16 @@
                                                            title="@s star@(s > 1 ? "s" : "")">★</label>
                                                 }
                                             </div>
-                                            <input type="hidden" name="Score"
-                                                   id="scoreInput-@ride.RideID" value="0" />
-                                            <div class="text-muted small mt-1"
-                                                 id="scoreLabel-@ride.RideID">
-                                                Tap a star
-                                            </div>
+                                            <input type="hidden" name="Score" id="scoreInput-@ride.RideID" value="0" />
+                                            <div class="text-muted small mt-1" id="scoreLabel-@ride.RideID">Tap a star</div>
                                         </div>
-
-                                        @* Comment *@
                                         <div class="mb-3">
-                                            <label class="sk-form-label">
-                                                Comment <span class="text-muted fw-normal">(optional)</span>
-                                            </label>
-                                            <textarea name="Comment" class="sk-form-control"
-                                                      rows="3"
+                                            <label class="sk-form-label">Comment <span class="text-muted fw-normal">(optional)</span></label>
+                                            <textarea name="Comment" class="sk-form-control" rows="3"
                                                       placeholder="Anything you'd like to add…"></textarea>
                                         </div>
-
                                         <div class="d-flex justify-content-end gap-2">
-                                            <button type="button" class="btn btn-sk-outline btn-sm"
-                                                    data-bs-dismiss="modal">
-                                                Cancel
-                                            </button>
+                                            <button type="button" class="btn btn-sk-outline btn-sm" data-bs-dismiss="modal">Cancel</button>
                                             <button type="submit" class="btn btn-sk-primary btn-sm px-4"
                                                     id="submitRating-@ride.RideID" disabled>
                                                 <i class="bi bi-send-fill me-1"></i> Submit Rating
@@ -358,28 +799,50 @@
 
 @section Scripts {
     <script>
-        document.querySelectorAll('.star-picker').forEach(function(picker) {
-            const rideId = picker.id.replace('starPicker-', '');
-            const labels = Array.from(picker.querySelectorAll('.star-label'));
+        /* ── Drawer toggle ── */
+        function toggleDrawer(drawerId, btn) {
+            const drawer = document.getElementById(drawerId);
+            if (!drawer) return;
+            const isOpen = drawer.classList.contains('open');
+            drawer.classList.toggle('open', !isOpen);
+
+            // update all toggle buttons for this drawer (both complaint + lost item can open same drawer)
+            document.querySelectorAll('[onclick*="' + drawerId + '"]').forEach(function(b) {
+                b.classList.toggle('active', !isOpen);
+            });
+        }
+
+        /* ── Auto-open drawers that have Resolved or Escalated complaints ── */
+        document.querySelectorAll('.sk-complaint-drawer').forEach(function(drawer) {
+            const hasResolution = drawer.querySelector('.sk-resolution-box');
+            const hasEscalated  = drawer.querySelector('.sk-alert-warning');
+            if (hasResolution || hasEscalated) {
+                drawer.classList.add('open');
+                document.querySelectorAll('[onclick*="' + drawer.id + '"]').forEach(function(b) {
+                    b.classList.add('active');
+                });
+            }
+        });
+
+        /* ── Star picker ── */
+        document.querySelectorAll('.star-picker').forEach(function (picker) {
+            const rideId    = picker.id.replace('starPicker-', '');
+            const labels    = Array.from(picker.querySelectorAll('.star-label'));
             const scoreInput = document.getElementById('scoreInput-' + rideId);
             const scoreLabel = document.getElementById('scoreLabel-' + rideId);
-            const submitBtn = document.getElementById('submitRating-' + rideId);
-            const starText = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+            const submitBtn  = document.getElementById('submitRating-' + rideId);
+            const starText   = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
             function highlight(val) {
-                labels.forEach(function(lbl) {
+                labels.forEach(function (lbl) {
                     lbl.style.color = parseInt(lbl.dataset.value) <= val ? '#F5A623' : '#ccc';
                 });
             }
 
-            labels.forEach(function(lbl) {
-                lbl.addEventListener('mouseenter', function() {
-                    highlight(parseInt(lbl.dataset.value));
-                });
-                picker.addEventListener('mouseleave', function() {
-                    highlight(parseInt(scoreInput.value) || 0);
-                });
-                lbl.addEventListener('click', function() {
+            labels.forEach(function (lbl) {
+                lbl.addEventListener('mouseenter', function () { highlight(parseInt(lbl.dataset.value)); });
+                picker.addEventListener('mouseleave', function () { highlight(parseInt(scoreInput.value) || 0); });
+                lbl.addEventListener('click', function () {
                     const val = parseInt(lbl.dataset.value);
                     scoreInput.value = val;
                     scoreLabel.textContent = starText[val] + ' (' + val + '/5)';

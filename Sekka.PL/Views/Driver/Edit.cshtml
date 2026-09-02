@@ -5,92 +5,204 @@
 }
 
 <div class="sk-page">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-7">
+    <div class="container" style="max-width:960px; padding-top:1.75rem; padding-bottom:3rem;">
 
-                <div class="sk-page-header">
-                    <a asp-action="Index"
-                       class="d-inline-flex align-items-center gap-2 mb-3"
-                       style="color:var(--sk-text-muted);font-size:.85rem;font-weight:500;text-decoration:none;">
-                        <i class="bi bi-arrow-left" style="font-size:1rem;"></i> Back to Drivers
-                    </a>
-                    <h1 style="font-size:1.75rem;">Edit Driver</h1>
-                    <p class="subtitle">Update account and professional details for this driver.</p>
-                </div>
+        <!-- ── Back link ── -->
+        <a asp-action="Index" class="sk-back-link mb-3 d-inline-flex">
+            <i class="bi bi-arrow-left"></i> Back to Drivers
+        </a>
 
-                @if (TempData["ErrorMessage"] != null)
-                {
-                    <div class="sk-alert sk-alert-danger">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        @TempData["ErrorMessage"]
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="sk-alert sk-alert-danger mb-4">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                @TempData["ErrorMessage"]
+            </div>
+        }
+
+        <form asp-action="Edit" method="post" id="editForm">
+            <div asp-validation-summary="ModelOnly" class="sk-alert sk-alert-danger mb-4"></div>
+            <input type="hidden" name="id" value="@Context.GetRouteValue("id")" />
+
+            <div class="sk-edit-layout">
+
+                <!-- ── Sidebar ── -->
+                <aside class="sk-edit-sidebar">
+
+                    <!-- Driver pill -->
+                    <div class="sk-edit-driver-pill">
+                        <div class="avatar">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <div>
+                            <p class="info-name">@Model.UserName</p>
+                            <p class="info-sub">Editing profile</p>
+                        </div>
                     </div>
-                }
 
-                <form asp-action="Edit" method="post">
-                    <div asp-validation-summary="ModelOnly" class="sk-alert sk-alert-danger"></div>
+                    <!-- Section nav -->
+                    <nav class="sk-edit-nav">
+                        <button type="button" class="sk-edit-nav-item active" onclick="scrollTo('sec-account')">
+                            <i class="bi bi-person-circle"></i> Account
+                        </button>
+                        <button type="button" class="sk-edit-nav-item" onclick="scrollTo('sec-contact')">
+                            <i class="bi bi-telephone"></i> Contact
+                        </button>
+                        <button type="button" class="sk-edit-nav-item" onclick="scrollTo('sec-professional')">
+                            <i class="bi bi-card-list"></i> Professional
+                        </button>
+                    </nav>
 
-                    <input type="hidden" name="id" value="@Context.GetRouteValue("id")" />
+                    <!-- Save shortcut -->
+                    <div style="margin-top:1rem;">
+                        <button type="submit" class="btn btn-sk-primary w-100 d-inline-flex align-items-center justify-content-center gap-2">
+                            <i class="bi bi-floppy2-fill"></i> Save changes
+                        </button>
+                        <a asp-action="Details" asp-route-id="@Context.GetRouteValue("id")"
+                           class="btn btn-sk-outline w-100 mt-2 d-inline-flex align-items-center justify-content-center gap-2">
+                            <i class="bi bi-eye"></i> View profile
+                        </a>
+                    </div>
 
-                    <div class="sk-card mb-4">
+                </aside>
+
+                <!-- ── Form panels ── -->
+                <div>
+
+                    <!-- Account -->
+                    <div class="sk-card mb-4" id="sec-account">
                         <div class="sk-card-header navy">
-                            <i class="bi bi-person-circle" style="color:var(--sk-amber);"></i>
+                            <i class="bi bi-person-circle"></i>
                             Account Information
                         </div>
                         <div class="sk-card-body">
+                            <p class="sk-card-section-title">Login details</p>
                             <div class="row g-3">
+
                                 <div class="col-md-6">
-                                    <label asp-for="UserName" class="sk-label">Username</label>
-                                    <input asp-for="UserName" class="sk-input" placeholder="Enter username" />
-                                    <span asp-validation-for="UserName" class="sk-field-error"></span>
+                                    <div class="sk-field">
+                                        <label asp-for="UserName" class="sk-field-label">Username</label>
+                                        <div class="sk-input-wrap">
+                                            <i class="bi bi-at sk-input-icon"></i>
+                                            <input asp-for="UserName" class="sk-input sk-input-icon-pad" placeholder="m.ali" />
+                                        </div>
+                                        <span asp-validation-for="UserName" class="sk-field-error"></span>
+                                    </div>
                                 </div>
+
                                 <div class="col-md-6">
-                                    <label asp-for="Email" class="sk-label">Email Address</label>
-                                    <input asp-for="Email" type="email" class="sk-input" placeholder="example@domain.com" />
-                                    <span asp-validation-for="Email" class="sk-field-error"></span>
+                                    <div class="sk-field">
+                                        <label asp-for="Email" class="sk-field-label">Email address</label>
+                                        <div class="sk-input-wrap">
+                                            <i class="bi bi-envelope sk-input-icon"></i>
+                                            <input asp-for="Email" type="email" class="sk-input sk-input-icon-pad" placeholder="driver@email.com" />
+                                        </div>
+                                        <span asp-validation-for="Email" class="sk-field-error"></span>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label asp-for="PhoneNumber" class="sk-label">Phone Number</label>
-                                    <input asp-for="PhoneNumber" type="tel" class="sk-input" placeholder="01xxxxxxxxx" />
-                                    <span asp-validation-for="PhoneNumber" class="sk-field-error"></span>
-                                </div>
-                                <div class="col-md-6">
-                                    <label asp-for="Address" class="sk-label">Address</label>
-                                    <input asp-for="Address" class="sk-input" placeholder="City, Street..." />
-                                    <span asp-validation-for="Address" class="sk-field-error"></span>
-                                </div>
+
                             </div>
                         </div>
                     </div>
 
-                    <div class="sk-card mb-4">
+                    <!-- Contact -->
+                    <div class="sk-card mb-4" id="sec-contact">
                         <div class="sk-card-header navy">
-                            <i class="bi bi-card-list" style="color:var(--sk-amber);"></i>
+                            <i class="bi bi-telephone-fill"></i>
+                            Contact Details
+                        </div>
+                        <div class="sk-card-body">
+                            <p class="sk-card-section-title">Phone & location</p>
+                            <div class="row g-3">
+
+                                <div class="col-md-6">
+                                    <div class="sk-field">
+                                        <label asp-for="PhoneNumber" class="sk-field-label">Phone number</label>
+                                        <div class="sk-input-wrap">
+                                            <i class="bi bi-phone sk-input-icon"></i>
+                                            <input asp-for="PhoneNumber" type="tel" class="sk-input sk-input-icon-pad" placeholder="01xxxxxxxxx" />
+                                        </div>
+                                        <span asp-validation-for="PhoneNumber" class="sk-field-error"></span>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="sk-field">
+                                        <label asp-for="Address" class="sk-field-label">Address</label>
+                                        <div class="sk-input-wrap">
+                                            <i class="bi bi-geo-alt sk-input-icon"></i>
+                                            <input asp-for="Address" class="sk-input sk-input-icon-pad" placeholder="City, Street…" />
+                                        </div>
+                                        <span asp-validation-for="Address" class="sk-field-error"></span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Professional -->
+                    <div class="sk-card" id="sec-professional">
+                        <div class="sk-card-header navy">
+                            <i class="bi bi-card-list"></i>
                             Professional Information
                         </div>
                         <div class="sk-card-body">
-                            <div class="sk-form-group">
-                                <label asp-for="LicenseNumber" class="sk-label">License Number</label>
-                                <input asp-for="LicenseNumber" class="sk-input" placeholder="Enter license number" />
+                            <p class="sk-card-section-title">License & credentials</p>
+
+                            <div class="sk-field" style="max-width:380px;">
+                                <label asp-for="LicenseNumber" class="sk-field-label">License number</label>
+                                <div class="sk-input-wrap">
+                                    <i class="bi bi-card-text sk-input-icon"></i>
+                                    <input asp-for="LicenseNumber" class="sk-input sk-input-icon-pad sk-input-mono" placeholder="LIC-2024-00123" />
+                                </div>
                                 <span asp-validation-for="LicenseNumber" class="sk-field-error"></span>
                             </div>
+
+                        </div>
+
+                        <!-- Sticky action footer inside the last card -->
+                        <div class="sk-form-actions">
+                            <a asp-action="Index" class="btn btn-sk-outline">Cancel</a>
+                            <button type="submit" class="btn btn-sk-primary d-inline-flex align-items-center gap-2">
+                                <i class="bi bi-floppy2-fill"></i> Save changes
+                            </button>
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-end gap-2">
-                        <a asp-action="Index" class="btn btn-sk-outline">Cancel</a>
-                        <button type="submit"
-                                class="btn btn-sk-primary d-inline-flex align-items-center gap-2">
-                            <i class="bi bi-floppy2-fill"></i> Save Changes
-                        </button>
-                    </div>
-
-                </form>
+                </div>
             </div>
-        </div>
+
+        </form>
     </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Sidebar nav active state on scroll
+        const sections = ['sec-account', 'sec-contact', 'sec-professional'];
+        const navItems = document.querySelectorAll('.sk-edit-nav-item');
+
+        function scrollTo(id) {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const idx = sections.indexOf(entry.target.id);
+                    if (idx >= 0) {
+                        navItems.forEach((n, i) => n.classList.toggle('active', i === idx));
+                    }
+                }
+            });
+        }, { threshold: 0.4 });
+
+        sections.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) observer.observe(el);
+        });
+    </script>
 }

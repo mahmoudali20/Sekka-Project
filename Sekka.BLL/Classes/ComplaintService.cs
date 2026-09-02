@@ -85,7 +85,7 @@ namespace Sekka.BLL.Services
 					vm.DriverName = driverName;
 			}
 		}
-		
+
 		private async Task HydrateNamesAsync(ComplaintVM vm)
 			=> await HydrateNamesAsync(new[] { vm });
 

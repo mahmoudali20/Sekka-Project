@@ -1,105 +1,143 @@
 @model DriverDetailsVM
 
 @{
-    ViewData["Title"] = "Driver Details";
+    ViewData["Title"] = "Driver Profile";
 }
 
 <div class="sk-page">
-    <div class="container">
+    <div class="container" style="max-width:900px;">
 
-        <div class="sk-page-header d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div>
-                <div class="mb-2">
-                    <a asp-controller="Driver" asp-action="Index"
-                       style="background:var(--sk-surface);border:1px solid var(--sk-border);color:var(--sk-text-muted);padding:.4rem .9rem;border-radius:var(--sk-radius-sm);font-size:.85rem;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;">
-                        <i class="bi bi-arrow-left"></i> All Drivers
+        <!-- ── Back + action bar ── -->
+        <div class="sk-page-header" style="padding-top:1.75rem; margin-bottom:1.5rem;">
+            <a asp-controller="Driver" asp-action="Index" class="sk-back-link mb-3 d-inline-flex">
+                <i class="bi bi-arrow-left"></i> All Drivers
+            </a>
+
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mt-2">
+                <div>
+                    <h1 style="font-family:var(--font-display); font-weight:700; font-size:1.5rem; color:var(--sk-navy); margin:0;">
+                        Driver Profile
+                    </h1>
+                    <p style="color:var(--sk-text-muted); font-size:.875rem; margin:.25rem 0 0;">
+                        Viewing details for <strong>@Model.FullName</strong>
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a asp-controller="Driver" asp-action="Edit" asp-route-id="@Model.Id"
+                       class="btn btn-sk-outline d-inline-flex align-items-center gap-2">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                    <a asp-controller="Driver" asp-action="Delete" asp-route-id="@Model.Id"
+                       class="btn btn-sk-danger d-inline-flex align-items-center gap-2">
+                        <i class="bi bi-trash3"></i> Delete
                     </a>
                 </div>
-                <h1 style="font-size:1.75rem;">Driver Profile</h1>
-                <p class="subtitle">Personal and vehicle information for @Model.FullName</p>
-            </div>
-            <div class="d-flex gap-2">
-                <a asp-controller="Driver" asp-action="Edit" asp-route-id="@Model.Id"
-                   class="btn btn-sk-outline d-inline-flex align-items-center gap-2">
-                    <i class="bi bi-pencil"></i> Edit
-                </a>
-                <a asp-controller="Driver" asp-action="Delete" asp-route-id="@Model.Id"
-                   class="btn btn-sk-danger d-inline-flex align-items-center gap-2">
-                    <i class="bi bi-trash3"></i> Delete
-                </a>
             </div>
         </div>
 
-        <div class="row g-4">
+        <!-- ── Profile hero card ── -->
+        <div class="sk-card mb-4">
+            <div class="sk-card-body" style="padding:1.75rem;">
+                <div class="d-flex align-items-center gap-4 flex-wrap">
 
-            <div class="col-lg-6">
-                <div class="sk-card h-100">
-                    <div class="sk-card-header navy">
-                        <i class="bi bi-person-circle text-amber"></i>
-                        Driver Information
-                    </div>
-                    <div class="sk-card-body">
+                    <!-- Avatar -->
+                    @if (string.IsNullOrWhiteSpace(Model.ProfilePicture))
+                    {
+                        <div style="
+                            width:88px; height:88px; border-radius:50%;
+                            background:var(--sk-navy);
+                            display:flex; align-items:center; justify-content:center;
+                            color:var(--sk-amber); font-size:2.2rem; flex-shrink:0;">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                    }
+                    else
+                    {
+                        <img src="@Url.Action("Picture", "Driver", new { id = Model.Id })"
+                             alt="@Model.FullName"
+                             style="width:88px; height:88px; border-radius:50%; object-fit:cover; border:3px solid var(--sk-border); flex-shrink:0;" />
+                    }
 
-                        <div class="text-center mb-4">
-                            @if (string.IsNullOrWhiteSpace(Model.ProfilePicture))
+                    <!-- Name + meta -->
+                    <div style="flex:1; min-width:0;">
+                        <h2 style="font-family:var(--font-display); font-weight:700; font-size:1.35rem; color:var(--sk-navy); margin:0 0 .4rem;">
+                            @Model.FullName
+                        </h2>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            @if (Model.IsAvailable)
                             {
-                                <div style="width:110px;height:110px;border-radius:50%;background:var(--sk-navy-3);display:flex;align-items:center;justify-content:center;font-size:2.8rem;color:var(--sk-amber);margin:0 auto;">
-                                    <i class="bi bi-person-fill"></i>
-                                </div>
+                                <span class="sk-badge-available">
+                                    <span class="sk-pulse-sm"></span> Available
+                                </span>
                             }
                             else
                             {
-                                <img src="@Url.Action("Picture", "Driver", new { id = Model.Id })"
-                                     alt="@Model.FullName"
-                                     style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--sk-amber);" />
+                                <span class="sk-badge-offline">
+                                    <i class="bi bi-moon-fill" style="font-size:.65rem;"></i> Offline
+                                </span>
                             }
-                            <h5 style="font-family:var(--font-display);font-weight:800;margin-top:1rem;margin-bottom:.15rem;">@Model.FullName</h5>
-                            <span style="font-size:.8rem;color:var(--sk-text-muted);">Driver</span>
+                            <span style="display:inline-flex; align-items:center; gap:.3rem; font-size:.85rem; color:var(--sk-text-muted); font-weight:600;">
+                                <i class="bi bi-star-fill" style="color:var(--sk-amber);"></i>
+                                @Model.RatingAverage.ToString("0.0") rating
+                            </span>
+                            <span style="color:var(--sk-border-2);">·</span>
+                            <span style="font-size:.82rem; color:var(--sk-text-muted);">
+                                <i class="bi bi-card-text me-1"></i>@Model.LicenseNumber
+                            </span>
                         </div>
+                    </div>
 
-                        <hr class="divider" />
+                    <!-- Quick contact -->
+                    @if (!string.IsNullOrEmpty(Model.PhoneNumber))
+                    {
+                        <a href="tel:@Model.PhoneNumber"
+                           class="btn btn-sk-outline d-inline-flex align-items-center gap-2"
+                           style="flex-shrink:0;">
+                            <i class="bi bi-telephone"></i> @Model.PhoneNumber
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
 
-                        <dl style="display:grid;grid-template-columns:1fr 1.5fr;gap:.6rem 1rem;font-size:.875rem;">
-                            <dt style="color:var(--sk-text-muted);font-weight:500;">Email</dt>
-                            <dd style="margin:0;font-weight:500;">@Model.Email</dd>
+        <!-- ── Two columns: driver info + vehicle ── -->
+        <div class="row g-4">
 
-                            <dt style="color:var(--sk-text-muted);font-weight:500;">Phone</dt>
-                            <dd style="margin:0;font-weight:500;">@(string.IsNullOrEmpty(Model.PhoneNumber) ? "—" : Model.PhoneNumber)</dd>
+            <!-- Driver info -->
+            <div class="col-lg-6">
+                <div class="sk-card h-100">
+                    <div class="sk-card-header navy">
+                        <i class="bi bi-person-vcard-fill"></i>
+                        Personal Information
+                    </div>
+                    <div class="sk-card-body">
 
-                            <dt style="color:var(--sk-text-muted);font-weight:500;">Address</dt>
-                            <dd style="margin:0;font-weight:500;">@(string.IsNullOrEmpty(Model.Address) ? "—" : Model.Address)</dd>
+                        <!-- Info rows -->
+                        <dl class="sk-info-grid">
 
-                            <dt style="color:var(--sk-text-muted);font-weight:500;">License No.</dt>
-                            <dd style="margin:0;font-weight:500;font-family:monospace;">@Model.LicenseNumber</dd>
-
-                            <dt style="color:var(--sk-text-muted);font-weight:500;">Rating</dt>
-                            <dd style="margin:0;">
-                                <span style="color:var(--sk-amber);font-weight:700;">★</span>
-                                <span style="font-weight:600;">@Model.RatingAverage.ToString("0.0")</span>
+                            <dt><i class="bi bi-envelope me-1"></i>Email</dt>
+                            <dd>
+                                <a href="mailto:@Model.Email" style="color:var(--sk-blue); text-decoration:none;">
+                                    @Model.Email
+                                </a>
                             </dd>
 
-                            <dt style="color:var(--sk-text-muted);font-weight:500;">Availability</dt>
-                            <dd style="margin:0;">
-                                @if (Model.IsAvailable)
-                                {
-                                    <span style="background:#D1FAE5;color:#065F46;padding:.2rem .6rem;border-radius:50px;font-size:.78rem;font-weight:700;">
-                                        <span class="sk-active-ride" style="border:none;background:none;box-shadow:none;display:inline;">
-                                            <span class="pulse-dot" style="width:7px;height:7px;"></span>
-                                        </span>
-                                        Available
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span style="background:#F3F4F6;color:#6B7280;padding:.2rem .6rem;border-radius:50px;font-size:.78rem;font-weight:700;">Offline</span>
-                                }
-                            </dd>
+                            <dt><i class="bi bi-phone me-1"></i>Phone</dt>
+                            <dd>@(string.IsNullOrEmpty(Model.PhoneNumber) ? "—" : Model.PhoneNumber)</dd>
+
+                            <dt><i class="bi bi-geo-alt me-1"></i>Address</dt>
+                            <dd>@(string.IsNullOrEmpty(Model.Address) ? "—" : Model.Address)</dd>
+
+                            <dt><i class="bi bi-card-text me-1"></i>License</dt>
+                            <dd><code class="sk-mono">@Model.LicenseNumber</code></dd>
+
                         </dl>
 
                     </div>
                 </div>
             </div>
 
+            <!-- Vehicle info -->
             <div class="col-lg-6">
                 <div class="sk-card h-100">
                     <div class="sk-card-header amber">
@@ -108,40 +146,54 @@
                     </div>
                     <div class="sk-card-body">
 
-                        <div style="border-radius:var(--sk-radius);overflow:hidden;height:190px;background:var(--sk-surface-2);margin-bottom:1.25rem;">
+                        <!-- Car image -->
+                        <div class="sk-car-image-wrap">
                             @if (string.IsNullOrWhiteSpace(Model.CarImage))
                             {
-                                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.5rem;color:var(--sk-text-muted);">
-                                    <i class="bi bi-image" style="font-size:2rem;opacity:.4;"></i>
-                                    <span style="font-size:.8rem;">No photo uploaded</span>
+                                <div class="sk-car-image-placeholder">
+                                    <i class="bi bi-image"></i>
+                                    <span>No photo uploaded</span>
                                 </div>
                             }
                             else
                             {
                                 <img src="@Url.Action("CarPicture", "Driver", new { id = Model.Id })"
                                      alt="@Model.CarModel"
-                                     style="width:100%;height:100%;object-fit:cover;" />
+                                     class="sk-car-image" />
                             }
                         </div>
 
-                        <dl style="display:grid;grid-template-columns:1fr 1.5fr;gap:.6rem 1rem;font-size:.875rem;">
-                            <dt style="color:var(--sk-text-muted);font-weight:500;">Model</dt>
-                            <dd style="margin:0;font-weight:600;">@Model.CarModel</dd>
+                        <dl class="sk-info-grid">
 
-                            <dt style="color:var(--sk-text-muted);font-weight:500;">Color</dt>
-                            <dd style="margin:0;font-weight:500;">@Model.CarColor</dd>
+                            <dt><i class="bi bi-car-front me-1"></i>Model</dt>
+                            <dd class="sk-info-strong">@Model.CarModel</dd>
 
-                            <dt style="color:var(--sk-text-muted);font-weight:500;">Plate No.</dt>
-                            <dd style="margin:0;font-family:monospace;font-weight:600;letter-spacing:.5px;">@Model.PlateNumber</dd>
+                            <dt><i class="bi bi-palette me-1"></i>Color</dt>
+                            <dd>@Model.CarColor</dd>
 
-                            <dt style="color:var(--sk-text-muted);font-weight:500;">License Plate</dt>
-                            <dd style="margin:0;font-family:monospace;font-weight:600;">@Model.LicensePlate</dd>
+                            <dt><i class="bi bi-upc me-1"></i>Plate no.</dt>
+                            <dd><code class="sk-mono sk-info-strong">@Model.PlateNumber</code></dd>
+
+                            <dt><i class="bi bi-credit-card me-1"></i>License plate</dt>
+                            <dd><code class="sk-mono">@Model.LicensePlate</code></dd>
+
                         </dl>
 
                     </div>
                 </div>
             </div>
 
+        </div>
+
+        <!-- ── Bottom action bar ── -->
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a asp-controller="Driver" asp-action="Index" class="btn btn-sk-outline">
+                <i class="bi bi-arrow-left me-1"></i> Back to list
+            </a>
+            <a asp-controller="Driver" asp-action="Edit" asp-route-id="@Model.Id"
+               class="btn btn-sk-primary d-inline-flex align-items-center gap-2">
+                <i class="bi bi-pencil-fill"></i> Edit driver
+            </a>
         </div>
 
     </div>

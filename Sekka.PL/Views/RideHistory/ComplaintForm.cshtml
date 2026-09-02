@@ -2,16 +2,24 @@
 @using Sekka.DAL.Models
 
 @{
-    bool isLostItem     = Model.Category == ComplaintCategory.LostItem;
-    string pageTitle    = isLostItem ? "Report a Lost Item" : "File a Complaint";
-    string submitLabel  = isLostItem ? "Submit Lost-Item Report" : "Submit Complaint";
-    ViewData["Title"]   = pageTitle;
+    bool isEdit       = Model.Id > 0;
+    bool isLostItem   = Model.Category == ComplaintCategory.LostItem;
+    string pageTitle  = isEdit
+        ? (isLostItem ? "Edit Lost-Item Report" : "Edit Complaint")
+        : (isLostItem ? "Report a Lost Item"    : "File a Complaint");
+    string submitLabel = isEdit
+        ? "Save Changes"
+        : (isLostItem ? "Submit Lost-Item Report" : "Submit Complaint");
+    ViewData["Title"] = pageTitle;
 
     var filteredCategories = Html.GetEnumSelectList<ComplaintCategory>()
         .Where(item => isLostItem
             ? item.Value == ((int)ComplaintCategory.LostItem).ToString()
             : item.Value != ((int)ComplaintCategory.LostItem).ToString())
         .ToList();
+
+    /* Route the form to the correct action */
+    string formAction = isEdit ? "EditComplaint" : "FileComplaint";
 }
 
 @section HeadLinks {
@@ -23,93 +31,123 @@
         <div class="row justify-content-center">
             <div class="col-lg-7">
 
-                <div class="sk-page-header">
-                    <a asp-controller="RideHistory" asp-action="Index"
-                       class="d-inline-flex align-items-center gap-2 mb-3"
-                       style="color:var(--sk-text-muted);font-size:.85rem;font-weight:500;text-decoration:none;">
-                        <i class="bi bi-arrow-left" style="font-size:1rem;"></i> Back to Ride History
-                    </a>
+                @* ── Back link ──*@
+                <a asp-controller="RideHistory" asp-action="Index"
+                   class="sk-back-link">
+                    <i class="bi bi-arrow-left"></i> Back to Ride History
+                </a>
 
-                    <div class="d-flex align-items-center gap-3 mb-1">
-                        <div style="width:48px;height:48px;border-radius:50%;
-                                    background:@(isLostItem ? "#FEF3C7" : "#FEE2E2");
-                                    display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="bi @(isLostItem ? "bi-bag-x-fill" : "bi-flag-fill")"
-                               style="font-size:1.3rem;color:@(isLostItem ? "#92400E" : "var(--sk-red)");"></i>
-                        </div>
-                        <div>
-                            <h1 style="font-size:1.75rem;margin:0;">@pageTitle</h1>
-                            @if (ViewBag.RideId is int rideId)
-                            {
-                                <p class="subtitle" style="margin:0;">
-                                    Ride <code style="font-size:.85rem;background:var(--sk-surface-2);
-                                               border:1px solid var(--sk-border);border-radius:4px;
-                                               padding:1px 5px;">#@rideId</code>
-                                </p>
-                            }
-                        </div>
+                @* ── Page title block ──*@
+                <div class="sk-complaint-hero">
+                    <div class="sk-complaint-icon @(isLostItem ? "icon-amber" : "icon-red")">
+                        <i class="bi @(isLostItem ? "bi-bag-x-fill" : "bi-flag-fill")"></i>
+                    </div>
+                    <div class="sk-complaint-title-group">
+                        <h1>@pageTitle</h1>
+                        @if (ViewBag.RideId is int rideId)
+                        {
+                            <p class="sk-complaint-ride-ref">
+                                Ride&nbsp;<code class="sk-code">#@rideId</code>
+                            </p>
+                        }
+                        @if (isEdit && !string.IsNullOrEmpty(Model.TicketReference))
+                        {
+                            <p class="sk-complaint-ticket">
+                                <i class="bi bi-ticket-perforated-fill me-1"></i>@Model.TicketReference
+                            </p>
+                        }
                     </div>
                 </div>
 
-                <div class="d-flex gap-2 mb-4">
-                    <a asp-controller="RideHistory"
-                       asp-action="FileComplaint"
-                       asp-route-rideId="@ViewBag.RideId"
-                       asp-route-category="@((int)ComplaintCategory.DriverBehavior)"
-                       class="btn @(isLostItem ? "btn-sk-outline-danger" : "btn-sk-danger")
-                              d-inline-flex align-items-center gap-2">
-                        <i class="bi bi-flag-fill"></i> Complaint
-                    </a>
-                    <a asp-controller="RideHistory"
-                       asp-action="FileComplaint"
-                       asp-route-rideId="@ViewBag.RideId"
-                       asp-route-category="@((int)ComplaintCategory.LostItem)"
-                       class="btn d-inline-flex align-items-center gap-2"
-                       style="@(isLostItem
-                           ? "background:var(--sk-amber);color:var(--sk-navy);border:none;font-weight:600;border-radius:var(--sk-radius-sm);padding:.65rem 1.5rem;font-size:.875rem;"
-                           : "background:transparent;color:#92400E;border:1.5px solid #92400E;font-weight:600;border-radius:var(--sk-radius-sm);padding:.65rem 1.5rem;font-size:.875rem;")">
-                        <i class="bi bi-bag-x-fill"></i> Lost Item
-                    </a>
-                </div>
+                @* ── Mode switcher (only for new complaints) ──*@
+                @if (!isEdit)
+                {
+                    <div class="sk-mode-tabs mb-4">
+                        <a asp-controller="RideHistory"
+                           asp-action="FileComplaint"
+                           asp-route-rideId="@ViewBag.RideId"
+                           asp-route-category="@((int)ComplaintCategory.DriverBehavior)"
+                           class="sk-mode-tab @(!isLostItem ? "active" : "")">
+                            <i class="bi bi-flag-fill"></i> File Complaint
+                        </a>
+                        <a asp-controller="RideHistory"
+                           asp-action="FileComplaint"
+                           asp-route-rideId="@ViewBag.RideId"
+                           asp-route-category="@((int)ComplaintCategory.LostItem)"
+                           class="sk-mode-tab @(isLostItem ? "active" : "")">
+                            <i class="bi bi-bag-x-fill"></i> Lost Item
+                        </a>
+                    </div>
+                }
 
-                <div asp-validation-summary="ModelOnly" class="sk-alert sk-alert-danger"></div>
+                @* ── Validation summary ──*@
+                <div asp-validation-summary="ModelOnly" class="sk-alert sk-alert-danger mb-4"></div>
 
+                @* ── Form card ──*@
                 <div class="sk-card mb-4">
-                    <div class="sk-card-header navy">
-                        <i class="bi @(isLostItem ? "bi-bag-x" : "bi-flag")"
-                           style="color:var(--sk-amber);"></i>
+                    <div class="sk-card-header @(isLostItem ? "amber" : "navy")">
+                        <i class="bi @(isLostItem ? "bi-bag-x" : "bi-flag")"></i>
                         @(isLostItem ? "Lost Item Details" : "Complaint Details")
+                        @if (isEdit)
+                        {
+                            <span class="sk-edit-badge ms-auto">Editing</span>
+                        }
                     </div>
                     <div class="sk-card-body">
 
-                        <form asp-controller="RideHistory" asp-action="FileComplaint" method="post">
+                        @* ▼ ACTION FIXED: routes to EditComplaint when editing, FileComplaint when new ▼*@
+                        <form asp-controller="RideHistory" asp-action="@formAction" method="post">
                             @Html.AntiForgeryToken()
+
+                            @* Hidden fields*@
+                            <input type="hidden" asp-for="Id" />
                             <input type="hidden" asp-for="TripId" />
 
-                            <div class="sk-form-group">
-                                <label asp-for="Category" class="sk-label">Category</label>
+                            @* Category*@
+                            <div class="sk-field-group">
+                                <label asp-for="Category" class="sk-field-label">Category</label>
                                 @if (isLostItem)
                                 {
                                     <input type="hidden" asp-for="Category" />
-                                    <input class="sk-input" style="background:var(--sk-surface-2);color:var(--sk-text-muted);cursor:default;"
-                                           value="Lost Item" readonly />
+                                    <div class="sk-field-readonly">
+                                        <i class="bi bi-bag-x-fill me-2 opacity-50"></i>
+                                        Lost Item
+                                    </div>
                                 }
                                 else
                                 {
-                                    <select asp-for="Category"
-                                            asp-items="filteredCategories"
-                                            class="sk-input"></select>
+                                    <div class="sk-select-wrap">
+                                        <select asp-for="Category"
+                                                asp-items="filteredCategories"
+                                                class="sk-field-input"></select>
+                                        <i class="bi bi-chevron-down sk-select-arrow"></i>
+                                    </div>
                                 }
                                 <span asp-validation-for="Category" class="sk-field-error"></span>
                             </div>
 
+                            @* Priority (complaints only)*@
                             @if (!isLostItem)
                             {
-                                <div class="sk-form-group">
-                                    <label asp-for="Priority" class="sk-label">Priority</label>
-                                    <select asp-for="Priority"
-                                            asp-items="Html.GetEnumSelectList<ComplaintPriority>()"
-                                            class="sk-input"></select>
+                                <div class="sk-field-group">
+                                    <label class="sk-field-label">Priority</label>
+                                    <div class="sk-priority-picker" id="priorityPicker">
+                                        @foreach (var p in Enum.GetValues<ComplaintPriority>())
+                                        {
+                                            string pClass = p switch {
+                                                ComplaintPriority.Low      => "pri-low",
+                                                ComplaintPriority.Medium   => "pri-medium",
+                                                ComplaintPriority.High     => "pri-high",
+                                                ComplaintPriority.Critical => "pri-critical",
+                                                _                          => "pri-medium"
+                                            };
+                                            <label class="sk-pri-option @pClass @(Model.Priority == p ? "selected" : "")">
+                                                <input type="radio" name="Priority" value="@((int)p)"
+                                                       @(Model.Priority == p ? "checked=\"checked\"" : "") />
+                                                @p
+                                            </label>
+                                        }
+                                    </div>
                                     <span asp-validation-for="Priority" class="sk-field-error"></span>
                                 </div>
                             }
@@ -118,70 +156,72 @@
                                 <input type="hidden" asp-for="Priority" />
                             }
 
-                            <div class="sk-form-group">
-                                <label asp-for="Subject" class="sk-label">
-                                    @(isLostItem ? "Item Description (brief)" : "Subject")
+                            @* Subject*@
+                            <div class="sk-field-group">
+                                <label asp-for="Subject" class="sk-field-label">
+                                    @(isLostItem ? "Item Description" : "Subject")
+                                    <span class="sk-field-required">*</span>
                                 </label>
                                 <input asp-for="Subject"
-                                       class="sk-input"
+                                       class="sk-field-input"
                                        placeholder="@(isLostItem
                                            ? "e.g. Black backpack with laptop inside"
                                            : "e.g. Driver was rude and drove aggressively")" />
                                 <span asp-validation-for="Subject" class="sk-field-error"></span>
                             </div>
 
-                            <div class="sk-form-group">
-                                <label asp-for="Description" class="sk-label">
-                                    @(isLostItem ? "Details (where / when you last had it)" : "Full Description")
+                            @* Description*@
+                            <div class="sk-field-group">
+                                <label asp-for="Description" class="sk-field-label">
+                                    @(isLostItem ? "Where / when you last had it" : "Full Description")
+                                    <span class="sk-field-required">*</span>
                                 </label>
-                                <textarea asp-for="Description"
-                                          class="sk-input"
-                                          rows="5"
-                                          style="resize:vertical;"
-                                          placeholder="@(isLostItem
-                                              ? "Describe the item, approximate time you noticed it missing, and any other details that may help us locate it..."
-                                              : "Please describe the incident in detail so our team can investigate...")"></textarea>
-                                <div class="d-flex justify-content-between align-items-center mt-1">
-                                    <span asp-validation-for="Description" class="sk-field-error"></span>
-                                    <small style="color:var(--sk-text-muted);font-size:.78rem;">Max 2000 characters</small>
+                                <div class="sk-textarea-wrap">
+                                    <textarea asp-for="Description"
+                                              class="sk-field-input sk-field-textarea"
+                                              rows="5"
+                                              maxlength="2000"
+                                              id="descriptionField"
+                                              placeholder="@(isLostItem
+                                                  ? "Describe the item, approximate time you noticed it missing, and any other details that may help us locate it..."
+                                                  : "Please describe the incident in detail so our team can investigate...")"></textarea>
+                                    <div class="sk-char-counter">
+                                        <span id="charCount">0</span> / 2000
+                                    </div>
                                 </div>
+                                <span asp-validation-for="Description" class="sk-field-error"></span>
                             </div>
 
+                            @* Info banner*@
                             @if (isLostItem)
                             {
                                 <div class="sk-alert sk-alert-warning">
                                     <i class="bi bi-info-circle-fill"></i>
-                                    <span>
-                                        We will contact you and the driver. Check your registered email for updates.
-                                    </span>
+                                    <span>We will contact you and the driver. Check your registered email for updates.</span>
                                 </div>
                             }
                             else
                             {
                                 <div class="sk-alert sk-alert-info">
                                     <i class="bi bi-info-circle-fill"></i>
-                                    <span>
-                                        Our support team reviews complaints within 24 hours and assigns them to an agent.
-                                    </span>
+                                    <span>Our support team reviews complaints within 24 hours and assigns them to an agent.</span>
                                 </div>
                             }
 
                             <hr class="divider" />
+
+                            @* Actions*@
                             <div class="d-flex justify-content-end gap-2">
                                 <a asp-controller="RideHistory" asp-action="Index"
                                    class="btn btn-sk-outline">Cancel</a>
                                 <button type="submit"
-                                        class="btn d-inline-flex align-items-center gap-2"
-                                        style="@(isLostItem
-                                            ? "background:var(--sk-amber);color:var(--sk-navy);border:none;font-weight:600;border-radius:var(--sk-radius-sm);padding:.65rem 1.5rem;font-size:.875rem;"
-                                            : "background:var(--sk-red);color:#fff;border:none;font-weight:600;border-radius:var(--sk-radius-sm);padding:.65rem 1.5rem;font-size:.875rem;")">
-                                    <i class="bi @(isLostItem ? "bi-send-check" : "bi-send")"></i>
+                                        class="btn sk-submit-btn @(isLostItem ? "sk-submit-amber" : "sk-submit-red")">
+                                    <i class="bi @(isEdit ? "bi-check-lg" : (isLostItem ? "bi-send-check" : "bi-send"))"></i>
                                     @submitLabel
                                 </button>
                             </div>
 
                         </form>
-
                     </div>
                 </div>
 
@@ -192,4 +232,44 @@
 
 @section Scripts {
     @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            // ── Character counter ──────────────────────────────────
+            var ta = document.getElementById('descriptionField');
+            var counter = document.getElementById('charCount');
+            if (ta && counter) {
+                function updateCount() {
+                    var len = ta.value.length;
+                    counter.textContent = len;
+                    counter.style.color = len > 1800 ? '#EF4444' : '';
+                }
+                ta.addEventListener('input', updateCount);
+                updateCount();
+            }
+
+            // ── Priority pills ─────────────────────────────────────
+            var picker = document.getElementById('priorityPicker');
+            if (picker) {
+                var labels = picker.querySelectorAll('.sk-pri-option');
+                var radios = picker.querySelectorAll('input[type="radio"]');
+
+                function syncPills() {
+                    labels.forEach(function (lbl) {
+                        var radio = lbl.querySelector('input[type="radio"]');
+                        lbl.classList.toggle('selected', !!(radio && radio.checked));
+                    });
+                }
+
+                // Seed on load — the server already rendered checked="checked"
+                // on the right radio, so this correctly highlights it
+                syncPills();
+
+                // Update on every click
+                radios.forEach(function (r) {
+                    r.addEventListener('change', syncPills);
+                });
+            }
+        });
+    </script>
 }

@@ -91,9 +91,11 @@ namespace Sekka.PL.Controllers
 		{
 			var currentUserId = _userManager.GetUserId(User)!;
 			vm.ComplainantId = currentUserId;
-			ModelState.Remove(nameof(vm.ComplainantId));
 			vm.Status = ComplaintStatus.Open;
+
+			ModelState.Remove(nameof(vm.ComplainantId));
 			ModelState.Remove(nameof(vm.Status));
+			ModelState.Remove(nameof(vm.Priority));
 
 			if (!ModelState.IsValid)
 			{
@@ -124,6 +126,98 @@ namespace Sekka.PL.Controllers
 			{
 				TempData["Info"] = $"You have already submitted a {vm.Category.ToString().Replace("_", " ")} report for this ride.";
 			}
+
+			return RedirectToAction(nameof(Index));
+		}
+
+		[HttpGet]
+		public async Task<IActionResult> EditComplaint(int id)
+		{
+			var vm = await _complaintService.GetByIdAsync(id);
+			if (vm is null)
+			{
+				TempData["Error"] = "Complaint not found.";
+				return RedirectToAction(nameof(Index));
+			}
+
+			var currentUserId = _userManager.GetUserId(User)!;
+			if (vm.ComplainantId != currentUserId)
+			{
+				TempData["Error"] = "You don't have permission to edit this complaint.";
+				return RedirectToAction(nameof(Index));
+			}
+
+			if (vm.Status != ComplaintStatus.Open && vm.Status != ComplaintStatus.InReview)
+			{
+				TempData["Info"] = "Only open or in-review complaints can be edited.";
+				return RedirectToAction(nameof(Index));
+			}
+
+
+			ViewBag.RideId = vm.TripId;
+			ViewBag.Category = vm.Category;
+			return View("ComplaintForm", vm);
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> EditComplaint(ComplaintVM vm)
+		{
+			var currentUserId = _userManager.GetUserId(User)!;
+
+			var existing = await _complaintService.GetByIdAsync(vm.Id);
+			if (existing is null) return NotFound();
+			if (existing.ComplainantId != currentUserId) return Forbid();
+			if (existing.Status != ComplaintStatus.Open && existing.Status != ComplaintStatus.InReview)
+			{
+				TempData["Info"] = "Only open or in-review complaints can be edited.";
+				return RedirectToAction(nameof(Index));
+			}
+
+			vm.ComplainantId = currentUserId;
+			vm.Status = existing.Status;
+			vm.Category = existing.Category;
+			vm.TripId = existing.TripId;
+			vm.TicketReference = existing.TicketReference;
+			vm.CreatedAt = existing.CreatedAt;
+
+			ModelState.Remove(nameof(vm.ComplainantId));
+			ModelState.Remove(nameof(vm.Status));
+			ModelState.Remove(nameof(vm.Priority));
+
+			if (!ModelState.IsValid)
+			{
+				ViewBag.RideId = vm.TripId;
+				ViewBag.Category = vm.Category;
+				return View("ComplaintForm", vm);
+			}
+
+			var updated = await _complaintService.UpdateAsync(vm);
+			TempData[updated ? "Success" : "Error"] = updated
+				? "Your complaint has been updated."
+				: "Update failed — please try again.";
+
+			return RedirectToAction(nameof(Index));
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> DeleteComplaint(int id)
+		{
+			var existing = await _complaintService.GetByIdAsync(id);
+			if (existing is null) return NotFound();
+			if (existing.ComplainantId != _userManager.GetUserId(User)) return Forbid();
+
+			if (existing.Status != ComplaintStatus.Open && existing.Status != ComplaintStatus.InReview)
+			{
+				TempData["Info"] = "Only open or in-review complaints can be deleted.";
+				return RedirectToAction(nameof(Index));
+			}
+
+			var deleted = await _complaintService.DeleteAsync(id);
+			TempData[deleted ? "Success" : "Error"] = deleted
+				? "Complaint withdrawn successfully."
+				: "Delete failed — please try again.";
 
 			return RedirectToAction(nameof(Index));
 		}
