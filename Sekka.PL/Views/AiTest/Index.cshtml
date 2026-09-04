@@ -1,0 +1,21 @@
+@model Sekka.PL.Controllers.AiTestViewModel
+
+<h2>Customer Complaints Summary!</h2>
+<p>Type some complaint text below, then click Summarize or Classify.</p>
+
+<form method="post" asp-action="Summarize">
+    <textarea name="InputText" rows="5" style="width:100%;">@Model.InputText</textarea>
+    <br /><br />
+    <button type="submit" asp-action="Summarize">Summarize</button>
+    <button type="submit" asp-action="Classify">Classify</button>
+</form>
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <p style="color:red;"><strong>Error:</strong> @Model.Error</p>
+}
+
+@if (!string.IsNullOrEmpty(Model.Result))
+{
+    <p><strong>Result:</strong> @Model.Result</p>
+}

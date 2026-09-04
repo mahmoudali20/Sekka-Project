@@ -20,6 +20,11 @@ namespace Sekka.BLL
 			services.AddScoped<IAttachmentService, AttachmentService>();
 			services.AddScoped<IAdminService, AdminService>();
 			services.AddScoped<ITripService, TripService>();
+			services.AddScoped<IWalletService, WalletService>();
+			services.AddScoped<IPaymentService, PaymentService>();
+			services.AddHttpClient();
+			services.AddScoped<IKashierService, KashierService>();
+			services.AddScoped<IComplaintAiService, HuggingFaceAiService>();
 			services.AddAutoMapper(typeof(DriverProfile));
 
 			return services;

@@ -25,5 +25,9 @@
         public bool IsCancelled { get; set; }
         public string? CancelReason { get; set; }
         public Rating? Rating { get; set; }
+
+        // Picked by the passenger on the booking screen — carried through as the default
+        // when they actually pay once the ride is done (still changeable on the Pay screen).
+        public PaymentMethod? PreferredPaymentMethod { get; set; }
     }
 }

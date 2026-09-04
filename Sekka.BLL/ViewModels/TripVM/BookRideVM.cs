@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Sekka.DAL.Models;
 
 namespace Sekka.BLL.ViewModels.TripVM
 {
@@ -6,6 +7,9 @@ namespace Sekka.BLL.ViewModels.TripVM
     {
 
         public string? PassengerId { get; set; }
+
+        [Required(ErrorMessage = "Choose how you'll pay")]
+        public PaymentMethod PreferredPaymentMethod { get; set; } = PaymentMethod.Cash;
 
         [Required(ErrorMessage = "Pickup Location is required")]
         public string PickupLocation { get; set; } = string.Empty;
