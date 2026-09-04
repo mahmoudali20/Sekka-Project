@@ -620,13 +620,13 @@
                                     <label asp-for="Description" class="cf-label">
                                         @(isLostItem ? "Where / when you last had it" : "Full description")
                                         <span class="cf-label-req">*</span>
-                                        <span class="cf-label-hint"><span id="charCount">0</span> / 2000</span>
+                                        <span class="cf-label-hint"><span id="charCount">0</span> / 5000</span>
                                     </label>
                                     <div class="cf-input-wrap">
                                         <textarea asp-for="Description"
                                                   class="cf-input"
                                                   rows="6"
-                                                  maxlength="2000"
+                                                  maxlength="5000"
                                                   id="descriptionField"
                                                   placeholder="@(isLostItem
                                                       ? "Describe the item, the approximate time you noticed it missing, and any details that may help us locate it…"
