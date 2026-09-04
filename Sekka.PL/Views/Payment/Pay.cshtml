@@ -1,0 +1,98 @@
+@model Sekka.BLL.ViewModels.PaymentVM.InitiatePaymentVM
+@using Sekka.DAL.Models
+
+@{
+    ViewData["Title"] = "Pay for ride";
+    decimal fare = ViewBag.Fare ?? 0m;
+    decimal balance = ViewBag.WalletBalance ?? 0m;
+    bool walletCoversFare = balance >= fare;
+}
+
+<div class="container">
+
+    <div class="sk-page-header">
+        <h1>Pay for your ride</h1>
+    </div>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="sk-alert sk-alert-danger mb-4">
+            <i class="bi bi-exclamation-triangle-fill"></i> @TempData["ErrorMessage"]
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="sk-card">
+                <div class="sk-card-header navy">
+                    <i class="bi bi-credit-card"></i> Choose payment method
+                </div>
+                <div class="sk-card-body">
+
+                    <div class="sk-summary-line mb-2">
+                        <strong>Fare:</strong> @fare.ToString("C")
+                    </div>
+                    <div class="sk-summary-line mb-3">
+                        <strong>Wallet balance:</strong> @balance.ToString("C")
+                        @if (!walletCoversFare)
+                        {
+                            <span class="text-danger d-block"><i class="bi bi-exclamation-circle"></i> Not enough to cover this fare.</span>
+                        }
+                    </div>
+
+                    <form asp-action="Pay" method="post" id="payForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="RideId" />
+
+                        <div class="sk-form-group">
+                            <select asp-for="Method" id="methodSelect" class="sk-form-control"
+                                    asp-items="Html.GetEnumSelectList<PaymentMethod>()">
+                            </select>
+                        </div>
+
+                        <div id="walletWarning" class="sk-alert sk-alert-danger mt-2" style="display:none;">
+                            Your wallet balance (@balance.ToString("C")) is lower than the fare
+                            (@fare.ToString("C")). Top up your wallet or choose a different payment method.
+                        </div>
+
+                        <button type="submit" id="payBtn" class="btn btn-sk-navy w-100 mt-2">Pay</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var walletCoversFare = @(walletCoversFare ? "true" : "false");
+            var select = document.getElementById('methodSelect');
+            var warning = document.getElementById('walletWarning');
+            var payBtn = document.getElementById('payBtn');
+            var form = document.getElementById('payForm');
+
+            function isWalletSelected() {
+                var opt = select.options[select.selectedIndex];
+                return opt && opt.text.trim().toLowerCase() === 'wallet';
+            }
+
+            function refresh() {
+                var blocked = isWalletSelected() && !walletCoversFare;
+                warning.style.display = blocked ? 'block' : 'none';
+                payBtn.disabled = blocked;
+            }
+
+            select.addEventListener('change', refresh);
+            form.addEventListener('submit', function (e) {
+                if (isWalletSelected() && !walletCoversFare) {
+                    e.preventDefault();
+                    refresh();
+                }
+            });
+
+            refresh();
+        })();
+    </script>
+}

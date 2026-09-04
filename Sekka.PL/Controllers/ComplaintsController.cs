@@ -13,11 +13,13 @@ namespace Sekka.PL.Controllers
 	{
 		private readonly IComplaintService _complaintService;
 		private readonly IAccountService _accountService;
+		private readonly IComplaintAiService _aiService;
 
-		public ComplaintsController(IComplaintService complaintService, IAccountService accountService)
+		public ComplaintsController(IComplaintService complaintService, IAccountService accountService, IComplaintAiService aiService)
 		{
 			_complaintService = complaintService;
 			_accountService = accountService;
+			_aiService = aiService;
 		}
 
 		[Authorize(Roles = "SuperAdmin")]
@@ -107,6 +109,19 @@ namespace Sekka.PL.Controllers
 					Value = ((int)s).ToString(),
 					Text = s.ToString()
 				}).ToList();
+
+			if (_aiService.IsConfigured)
+			{
+				try
+				{
+					ViewBag.AiSummary = await _aiService.SummarizeAsync(complaint.Description);
+					ViewBag.AiCategory = await _aiService.ClassifyAsync(complaint.Description);
+				}
+				catch (Exception ex)
+				{
+					ViewBag.AiError = ex.Message;
+				}
+			}
 
 			return View(complaint);
 		}

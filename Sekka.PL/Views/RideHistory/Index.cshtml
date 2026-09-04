@@ -15,6 +15,9 @@
     var complaintDetail = ViewBag.ComplaintDetail as Dictionary<(int, ComplaintCategory), ComplaintVM>
                             ?? new Dictionary<(int, ComplaintCategory), ComplaintVM>();
 
+    var paymentsByRide = ViewBag.PaymentsByRide as Dictionary<int, Sekka.BLL.ViewModels.PaymentVM.PaymentVM>
+                            ?? new Dictionary<int, Sekka.BLL.ViewModels.PaymentVM.PaymentVM>();
+
     string GetPillCss(ComplaintStatus status) => status switch
     {
         ComplaintStatus.Open      => "sk-pill-open",
@@ -424,6 +427,53 @@
                                     </div>
                                 }
                             </div>
+
+                            @* Payment *@
+                            @if (ride.Status == RideStatus.Completed)
+                            {
+                                paymentsByRide.TryGetValue(ride.RideID, out var payment);
+
+                                <div class="d-flex align-items-center justify-content-between pt-2 mb-3 border-top">
+                                    @if (payment is null)
+                                    {
+                                        <span class="text-muted small">
+                                            <i class="bi bi-exclamation-circle me-1"></i>Not paid yet
+                                        </span>
+                                        <a asp-controller="Payment" asp-action="Pay" asp-route-rideId="@ride.RideID"
+                                           class="btn btn-sk-primary btn-sm">
+                                            <i class="bi bi-credit-card me-1"></i> Pay now
+                                        </a>
+                                    }
+                                    else if (payment.Status == PaymentStatus.Completed)
+                                    {
+                                        <span class="sk-badge sk-badge-completed">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Paid via @payment.Method
+                                        </span>
+                                    }
+                                    else if (payment.Status == PaymentStatus.Pending && payment.Method == PaymentMethod.Cash)
+                                    {
+                                        <span class="text-muted small">
+                                            <i class="bi bi-hourglass-split me-1"></i>Cash — pending driver confirmation
+                                        </span>
+                                    }
+                                    else if (payment.Status == PaymentStatus.Pending)
+                                    {
+                                        <span class="text-muted small">
+                                            <i class="bi bi-hourglass-split me-1"></i>@payment.Method payment pending
+                                        </span>
+                                    }
+                                    else if (payment.Status == PaymentStatus.Failed)
+                                    {
+                                        <span class="text-danger small">
+                                            <i class="bi bi-x-circle-fill me-1"></i>Payment failed
+                                        </span>
+                                        <a asp-controller="Payment" asp-action="Pay" asp-route-rideId="@ride.RideID"
+                                           class="btn btn-sk-outline-danger btn-sm">
+                                            Try again
+                                        </a>
+                                    }
+                                </div>
+                            }
 
                             @* Cancel reason *@
                             @if (ride.IsCancelled && !string.IsNullOrEmpty(ride.CancelReason))

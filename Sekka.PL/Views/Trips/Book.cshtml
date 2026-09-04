@@ -78,6 +78,22 @@
 
                         <hr class="divider" />
 
+                        <!-- Payment method -->
+                        <div class="sk-form-group">
+                            <label class="sk-form-label">
+                                <i class="bi bi-credit-card"></i> How will you pay?
+                            </label>
+                            <select asp-for="PreferredPaymentMethod" class="sk-form-control"
+                                    asp-items="Html.GetEnumSelectList<Sekka.DAL.Models.PaymentMethod>()">
+                            </select>
+                            <div style="font-size:.78rem;color:var(--sk-text-muted);margin-top:.4rem;">
+                                Charged once the ride is done — you can still change it on the payment screen.
+                            </div>
+                            <span asp-validation-for="PreferredPaymentMethod" class="text-danger" style="font-size:.8rem;"></span>
+                        </div>
+
+                        <hr class="divider" />
+
                         <!-- Fare estimate -->
                         <div class="sk-form-group">
                             <label class="sk-form-label">Estimated fare</label>

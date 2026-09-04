@@ -14,11 +14,16 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDALServices(builder.Configuration);
 builder.Services.AddBLLServices();
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<SekkaDbContext>();
-builder.Services.AddAuthentication().AddGoogle(options =>
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret))
+{
+    builder.Services.AddAuthentication().AddGoogle(options =>
     {
-        options.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
-        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
     });
+}
 
 builder.Services.AddScoped<ITripNotificationService, TripNotificationService>();
 builder.Services.AddSignalR();

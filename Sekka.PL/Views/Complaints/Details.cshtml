@@ -156,6 +156,38 @@
                 </div>
             </div>
 
+            @if (ViewBag.AiSummary is not null || ViewBag.AiCategory is not null || ViewBag.AiError is not null)
+            {
+                <div class="sk-card mb-4">
+                    <div class="sk-card-header">
+                        <i class="bi bi-stars text-amber"></i>
+                        <span>AI Insights</span>
+                    </div>
+                    <div class="sk-card-body">
+                        @if (ViewBag.AiError is not null)
+                        {
+                            <div class="sk-alert sk-alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                <span>AI call failed: @ViewBag.AiError</span>
+                            </div>
+                        }
+                        else
+                        {
+                            @if (ViewBag.AiCategory is not null)
+                            {
+                                <p class="sk-form-label">Suggested Category</p>
+                                <span class="sk-badge sk-pri-medium mb-3 d-inline-block">@ViewBag.AiCategory</span>
+                            }
+                            @if (ViewBag.AiSummary is not null)
+                            {
+                                <p class="sk-form-label">Summary</p>
+                                <p style="line-height:1.7;color:var(--sk-text);">@ViewBag.AiSummary</p>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+
             @if (User.IsInRole("Admin") && !isResolved)
             {
                 <div class="sk-card mb-4">

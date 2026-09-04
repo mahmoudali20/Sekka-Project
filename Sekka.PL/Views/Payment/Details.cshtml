@@ -1,0 +1,48 @@
+@model Sekka.BLL.ViewModels.PaymentVM.PaymentVM
+@using Sekka.DAL.Models
+
+@{
+    ViewData["Title"] = "Payment details";
+}
+
+<div class="container">
+
+    <div class="sk-page-header">
+        <h1>Payment for ride #@Model.RideId</h1>
+    </div>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="sk-alert sk-alert-danger mb-4">
+            <i class="bi bi-exclamation-triangle-fill"></i> @TempData["ErrorMessage"]
+        </div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="sk-alert sk-alert-success mb-4">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <div class="sk-card">
+        <div class="sk-card-header navy">
+            <i class="bi bi-receipt"></i> Details
+        </div>
+        <div class="sk-card-body">
+            <p><strong>Method:</strong> @Model.Method</p>
+            <p><strong>Amount:</strong> @Model.Amount.ToString("C")</p>
+            <p><strong>Status:</strong> @Model.Status</p>
+
+            @if (Model.Method == PaymentMethod.Cash && Model.Status == PaymentStatus.Pending && User.IsInRole("Driver"))
+            {
+                <form asp-action="ConfirmCash" asp-route-rideId="@Model.RideId" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sk-navy">
+                        <i class="bi bi-check2-circle"></i> Confirm cash collected
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+</div>

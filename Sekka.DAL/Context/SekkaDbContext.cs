@@ -24,5 +24,10 @@ namespace Sekka.DAL.Context
         public DbSet<Rating> Ratings { get; set; }
         public DbSet<Complaint> Complaints { get; set; }
 
+        public DbSet<Wallet> Wallets { get; set; }
+        public DbSet<WalletTransaction> WalletTransactions { get; set; }
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<Coupon> Coupons { get; set; }
+
 	}
 }

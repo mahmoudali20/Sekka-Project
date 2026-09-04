@@ -10,11 +10,19 @@ namespace Sekka.BLL.Classes
 	{
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ITripNotificationService _notificationService;
+		private readonly IWalletService _walletService;
+		private readonly IPaymentService _paymentService;
 
-		public TripService(IUnitOfWork unitOfWork, ITripNotificationService notificationService)
+		public TripService(
+			IUnitOfWork unitOfWork,
+			ITripNotificationService notificationService,
+			IWalletService walletService,
+			IPaymentService paymentService)
 		{
 			_unitOfWork = unitOfWork;
 			_notificationService = notificationService;
+			_walletService = walletService;
+			_paymentService = paymentService;
 		}
 
 		public async Task<Result<Ride>> BookRideAsync(BookRideVM model, CancellationToken ct = default)
@@ -25,6 +33,18 @@ namespace Sekka.BLL.Classes
 				r.Status != RideStatus.Cancelled, ct);
 
 			if (hasActiveRide) return Result<Ride>.Fail("You already have an active ride.");
+
+			if (model.EstimatedFare <= 0)
+				return Result<Ride>.Validation("Estimated fare must be greater than zero.");
+
+			
+			if (model.PreferredPaymentMethod == PaymentMethod.Wallet)
+			{
+				var wallet = await _walletService.GetBalanceAsync(model.PassengerId, ct);
+				if (wallet.Balance < model.EstimatedFare)
+					return Result<Ride>.Fail(
+						$"Insufficient wallet balance. Your balance is EGP {wallet.Balance:F2}, but the estimated fare is EGP {model.EstimatedFare:F2}.");
+			}
 
 			var passenger = await _unitOfWork.GetRepo<ApplicationUser, string>().FirstOrDefaultAsync(p => p.Id == model.PassengerId);
 
@@ -40,6 +60,7 @@ namespace Sekka.BLL.Classes
 				DistanceInKm = model.DistanceInKm,
 				EstimatedFare = model.EstimatedFare,
 				ScheduledTime = model.ScheduledTime,
+				PreferredPaymentMethod = model.PreferredPaymentMethod,
 				Status = RideStatus.Requested,
 				RequestTime = DateTime.UtcNow,
 				IsCancelled = false
@@ -186,6 +207,18 @@ namespace Sekka.BLL.Classes
 			if (ride.Status != RideStatus.Started)
 				return Result.Fail("Ride must be started before it can be completed.");
 
+			if (actualFare <= 0)
+				return Result.Fail("Actual fare must be greater than zero.");
+
+			// wallet full check 3shan klmam mntky
+			if (ride.PreferredPaymentMethod == PaymentMethod.Wallet)
+			{
+				var wallet = await _walletService.GetBalanceAsync(ride.PassengerId, ct);
+				if (wallet.Balance < actualFare)
+					return Result.Fail(
+						$"Cannot complete wallet ride: balance is EGP {wallet.Balance:F2}, but the final fare is EGP {actualFare:F2}.");
+			}
+
 			ride.Status = RideStatus.Completed;
 			ride.EndTime = DateTime.UtcNow;
 			ride.ActualFare = actualFare;
@@ -200,6 +233,14 @@ namespace Sekka.BLL.Classes
 				return Result.Fail("Failed to complete ride.");
 
 			ride.Driver = driver;
+
+			// wallet safety check
+			if (ride.PreferredPaymentMethod == PaymentMethod.Wallet)
+			{
+				var paymentResult = await _paymentService.ProcessCompletedRidePaymentAsync(ride.RideID, ct);
+				if (!paymentResult.success)
+					return Result.Fail(paymentResult.error ?? "Ride completed, but wallet payment could not be processed.");
+			}
 
 			await _notificationService.NotifyRideCompletedAsync(ride);
 
@@ -235,7 +276,7 @@ namespace Sekka.BLL.Classes
 			return rides.OrderByDescending(r => r.RequestTime);
 		}
 
-		// Returns all rides for a specific passenger, newest first.
+		
 		public async Task<IEnumerable<Ride>> GetByPassengerAsync(string passengerId, CancellationToken ct = default)
 		{
 			var allRides = (await _unitOfWork.GetRepo<Ride, int>()
@@ -274,7 +315,7 @@ namespace Sekka.BLL.Classes
 			return allRides.OrderByDescending(r => r.RequestTime);
 		}
 
-		// Returns a single ride by ID, with Rating hydrated.
+		
 		public async Task<Ride?> GetRideByIdAsync(int rideId, CancellationToken ct = default)
 		{
 			var ride = await _unitOfWork.GetRepo<Ride, int>().GetByIdAsync(rideId, ct);

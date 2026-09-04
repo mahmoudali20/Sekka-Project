@@ -13,15 +13,18 @@ namespace Sekka.PL.Controllers
 	{
 		private readonly ITripService _rideService;
 		private readonly IComplaintService _complaintService;
+		private readonly IPaymentService _paymentService;
 		private readonly UserManager<ApplicationUser> _userManager;
 
 		public RideHistoryController(
 			ITripService rideService,
 			IComplaintService complaintService,
+			IPaymentService paymentService,
 			UserManager<ApplicationUser> userManager)
 		{
 			_rideService = rideService;
 			_complaintService = complaintService;
+			_paymentService = paymentService;
 			_userManager = userManager;
 		}
 
@@ -49,6 +52,17 @@ namespace Sekka.PL.Controllers
 
 			ViewBag.ComplaintsByRide = complaintsByRide;
 			ViewBag.ComplaintDetail = complaintDetail;
+
+			// Payment status per completed ride, so the view can show "Pay now" vs.
+			// "Paid via Wallet" / "Cash — pending" instead of nothing at all.
+			var paymentsByRide = new Dictionary<int, Sekka.BLL.ViewModels.PaymentVM.PaymentVM>();
+			foreach (var ride in rides.Where(r => r.Status == RideStatus.Completed))
+			{
+				var payment = await _paymentService.GetByRideIdAsync(ride.RideID);
+				if (payment != null)
+					paymentsByRide[ride.RideID] = payment;
+			}
+			ViewBag.PaymentsByRide = paymentsByRide;
 
 			return View(rides);
 		}
