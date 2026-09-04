@@ -4,6 +4,8 @@
 @{
     bool isEdit       = Model.Id > 0;
     bool isLostItem   = Model.Category == ComplaintCategory.LostItem;
+    bool isCancelled  = ViewBag.RideStatus is RideStatus rs && rs == RideStatus.Cancelled;
+
     string pageTitle  = isEdit
         ? (isLostItem ? "Edit Lost-Item Report" : "Edit Complaint")
         : (isLostItem ? "Report a Lost Item"    : "File a Complaint");
@@ -18,204 +20,645 @@
             : item.Value != ((int)ComplaintCategory.LostItem).ToString())
         .ToList();
 
-    /* Route the form to the correct action */
     string formAction = isEdit ? "EditComplaint" : "FileComplaint";
 }
 
 @section HeadLinks {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        /* ── Complaint form page layout ── */
+        .cf-page {
+            padding: 2rem 0 4rem;
+            background: var(--sk-surface-2);
+            min-height: 100vh;
+        }
+
+        /* ── Back link ── */
+        .cf-back {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            font-size: .82rem;
+            font-weight: 600;
+            color: var(--sk-text-muted);
+            text-decoration: none;
+            margin-bottom: 1.5rem;
+            transition: color .15s;
+            letter-spacing: .01em;
+        }
+        .cf-back:hover { color: var(--sk-navy); }
+        .cf-back i { font-size: .9rem; }
+
+        /* ── Blocked (cancelled ride) state ── */
+        .cf-blocked {
+            background: var(--sk-surface);
+            border: 1px solid var(--sk-border);
+            border-radius: var(--sk-radius-lg);
+            padding: 3rem 2rem;
+            text-align: center;
+            box-shadow: var(--sk-shadow-sm);
+        }
+        .cf-blocked-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: var(--sk-red-bg);
+            color: var(--sk-red);
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+        }
+        .cf-blocked h2 {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--sk-navy);
+            margin: 0 0 .5rem;
+        }
+        .cf-blocked p {
+            font-size: .9rem;
+            color: var(--sk-text-muted);
+            max-width: 340px;
+            margin: 0 auto 1.5rem;
+            line-height: 1.6;
+        }
+
+        /* ── Header block ── */
+        .cf-header {
+            margin-bottom: 1.5rem;
+        }
+        .cf-hero {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        .cf-hero-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            flex-shrink: 0;
+        }
+        .cf-hero-icon.icon-red  { background: var(--sk-red-bg); color: var(--sk-red); }
+        .cf-hero-icon.icon-amber { background: var(--sk-amber-light); color: var(--sk-amber-dim); }
+        .cf-hero h1 {
+            font-family: var(--font-display);
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--sk-navy);
+            margin: 0 0 .25rem;
+            line-height: 1.2;
+        }
+        .cf-hero-meta {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            flex-wrap: wrap;
+        }
+        .cf-ride-ref {
+            font-size: .8rem;
+            color: var(--sk-text-muted);
+            font-weight: 500;
+        }
+        .cf-ride-ref code {
+            font-family: 'Courier New', monospace;
+            background: var(--sk-surface-2);
+            border: 1px solid var(--sk-border);
+            border-radius: 4px;
+            padding: .05rem .35rem;
+            font-size: .8rem;
+            color: var(--sk-navy);
+        }
+        .cf-ticket-ref {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            font-size: .78rem;
+            font-weight: 600;
+            color: var(--sk-blue);
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 50px;
+            padding: .2rem .65rem;
+        }
+
+        /* ── Mode tabs ── */
+        .cf-tabs {
+            display: flex;
+            gap: .35rem;
+            background: var(--sk-surface);
+            border: 1px solid var(--sk-border);
+            border-radius: var(--sk-radius);
+            padding: .3rem;
+            margin-bottom: 1.25rem;
+        }
+        .cf-tab {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .45rem;
+            padding: .6rem 1rem;
+            border-radius: var(--sk-radius-sm);
+            font-size: .85rem;
+            font-weight: 600;
+            font-family: var(--font-display);
+            color: var(--sk-text-muted);
+            text-decoration: none;
+            transition: all .15s;
+        }
+        .cf-tab:hover { color: var(--sk-navy); background: var(--sk-surface-2); }
+        .cf-tab.active {
+            background: var(--sk-navy);
+            color: #fff;
+            box-shadow: var(--sk-shadow-sm);
+        }
+        .cf-tab.active i { opacity: .85; }
+
+        /* ── Form card ── */
+        .cf-card {
+            background: var(--sk-surface);
+            border: 1px solid var(--sk-border);
+            border-radius: var(--sk-radius-lg);
+            box-shadow: var(--sk-shadow-sm);
+            overflow: hidden;
+        }
+
+        /* Card stripe at top */
+        .cf-card-stripe {
+            height: 4px;
+        }
+        .cf-card-stripe.stripe-red   { background: var(--sk-red); }
+        .cf-card-stripe.stripe-amber { background: var(--sk-amber); }
+
+        .cf-card-inner {
+            padding: 1.75rem;
+        }
+
+        /* ── Field system ── */
+        .cf-field {
+            margin-bottom: 1.5rem;
+        }
+        .cf-field:last-child { margin-bottom: 0; }
+
+        .cf-label {
+            display: flex;
+            align-items: center;
+            gap: .3rem;
+            font-size: .78rem;
+            font-weight: 700;
+            color: var(--sk-text-muted);
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            margin-bottom: .5rem;
+        }
+        .cf-label-req {
+            color: var(--sk-red);
+            font-size: .85rem;
+            line-height: 1;
+        }
+        .cf-label-hint {
+            margin-left: auto;
+            font-size: .73rem;
+            font-weight: 500;
+            color: var(--sk-text-light);
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        /* Input wrapper */
+        .cf-input-wrap {
+            position: relative;
+        }
+        .cf-input-icon {
+            position: absolute;
+            left: .9rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--sk-text-light);
+            font-size: .95rem;
+            pointer-events: none;
+            transition: color .15s;
+            z-index: 1;
+        }
+        .cf-input-wrap:focus-within .cf-input-icon {
+            color: var(--sk-navy);
+        }
+
+        /* The inputs themselves */
+        .cf-input {
+            width: 100%;
+            padding: .75rem 1rem;
+            font-family: var(--font-body);
+            font-size: .9rem;
+            color: var(--sk-text);
+            background: var(--sk-surface);
+            border: 1.5px solid var(--sk-border);
+            border-radius: var(--sk-radius-sm);
+            outline: none;
+            transition: border-color .15s, box-shadow .15s, background .15s;
+            line-height: 1.5;
+        }
+        .cf-input.with-icon {
+            padding-left: 2.5rem;
+        }
+        .cf-input:hover:not(:focus) {
+            border-color: var(--sk-border-2);
+        }
+        .cf-input:focus {
+            border-color: var(--sk-navy);
+            box-shadow: 0 0 0 3px rgba(13,27,53,.08);
+            background: #fff;
+        }
+        .cf-input::placeholder {
+            color: var(--sk-text-light);
+        }
+
+        /* Textarea */
+        textarea.cf-input {
+            resize: vertical;
+            min-height: 130px;
+            padding-bottom: 2rem; /* room for counter */
+        }
+
+        /* Select */
+        select.cf-input {
+            padding-right: 2.25rem;
+            appearance: none;
+            cursor: pointer;
+        }
+        .cf-select-wrap {
+            position: relative;
+        }
+        .cf-select-arrow {
+            position: absolute;
+            right: .85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--sk-text-muted);
+            pointer-events: none;
+            font-size: .8rem;
+        }
+
+        /* Readonly display */
+        .cf-readonly {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            padding: .75rem 1rem;
+            background: var(--sk-surface-2);
+            border: 1.5px solid var(--sk-border);
+            border-radius: var(--sk-radius-sm);
+            font-size: .9rem;
+            color: var(--sk-text-muted);
+            font-weight: 500;
+        }
+
+        /* Char counter */
+        .cf-char-counter {
+            position: absolute;
+            bottom: .55rem;
+            right: .75rem;
+            font-size: .72rem;
+            color: var(--sk-text-light);
+            pointer-events: none;
+            background: var(--sk-surface);
+            padding: 0 .25rem;
+            border-radius: 3px;
+            transition: color .15s;
+        }
+        .cf-char-counter.near-limit { color: var(--sk-red); }
+
+        /* Field error */
+        .cf-field-error {
+            display: block;
+            margin-top: .35rem;
+            font-size: .78rem;
+            color: var(--sk-red);
+            font-weight: 500;
+        }
+
+        /* ── Priority picker ── */
+        .cf-priority-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: .5rem;
+        }
+        @@media (max-width: 480px) {
+            .cf-priority-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        .cf-pri-btn {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: .3rem;
+            padding: .65rem .5rem;
+            border-radius: var(--sk-radius-sm);
+            font-size: .78rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1.5px solid transparent;
+            transition: all .15s;
+            text-align: center;
+        }
+        .cf-pri-btn input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .cf-pri-btn .pri-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transition: transform .15s;
+        }
+        .cf-pri-btn:hover { transform: translateY(-1px); }
+
+        .cf-pri-btn.pri-low    { background: #F3F4F6; color: #6B7280; border-color: #E5E7EB; }
+        .cf-pri-btn.pri-medium { background: #DBEAFE; color: #1E40AF; border-color: #BFDBFE; }
+        .cf-pri-btn.pri-high   { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+        .cf-pri-btn.pri-critical{ background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; }
+
+        .cf-pri-btn.pri-low    .pri-dot { background: #9CA3AF; }
+        .cf-pri-btn.pri-medium .pri-dot { background: #3B82F6; }
+        .cf-pri-btn.pri-high   .pri-dot { background: #F59E0B; }
+        .cf-pri-btn.pri-critical .pri-dot { background: var(--sk-red); }
+
+        .cf-pri-btn.selected {
+            box-shadow: 0 0 0 2px currentColor;
+            transform: translateY(-1px);
+        }
+        .cf-pri-btn.selected .pri-dot { transform: scale(1.4); }
+
+        /* ── Divider ── */
+        .cf-divider {
+            border: none;
+            border-top: 1px solid var(--sk-border);
+            margin: 1.5rem 0;
+        }
+
+        /* ── Info banner ── */
+        .cf-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: .65rem;
+            padding: .85rem 1rem;
+            border-radius: var(--sk-radius-sm);
+            font-size: .83rem;
+            line-height: 1.5;
+        }
+        .cf-banner i { font-size: 1rem; flex-shrink: 0; margin-top: .05rem; }
+        .cf-banner.info    { background: #EFF6FF; color: #1E40AF; border: 1px solid #BFDBFE; }
+        .cf-banner.warning { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
+
+        /* ── Form footer ── */
+        .cf-footer {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: .65rem;
+            padding: 1.1rem 1.75rem;
+            border-top: 1px solid var(--sk-border);
+            background: var(--sk-surface-2);
+        }
+
+        /* ── Validation summary ── */
+        .cf-validation-summary {
+            background: var(--sk-red-bg);
+            border: 1px solid #FCA5A5;
+            border-radius: var(--sk-radius-sm);
+            padding: .85rem 1rem;
+            font-size: .85rem;
+            color: #7F1D1D;
+            margin-bottom: 1.25rem;
+        }
+        .cf-validation-summary ul {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+        .cf-validation-summary li { margin-top: .2rem; }
+    </style>
 }
 
-<div class="sk-page">
+<div class="cf-page">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-lg-7">
+            <div class="col-lg-6 col-md-8">
 
-                @* ── Back link ──*@
-                <a asp-controller="RideHistory" asp-action="Index"
-                   class="sk-back-link">
-                    <i class="bi bi-arrow-left"></i> Back to Ride History
+                @* ── Back link ── *@
+                <a asp-controller="RideHistory" asp-action="Index" class="cf-back">
+                    <i class="bi bi-arrow-left"></i> Ride History
                 </a>
 
-                @* ── Page title block ──*@
-                <div class="sk-complaint-hero">
-                    <div class="sk-complaint-icon @(isLostItem ? "icon-amber" : "icon-red")">
-                        <i class="bi @(isLostItem ? "bi-bag-x-fill" : "bi-flag-fill")"></i>
-                    </div>
-                    <div class="sk-complaint-title-group">
-                        <h1>@pageTitle</h1>
-                        @if (ViewBag.RideId is int rideId)
-                        {
-                            <p class="sk-complaint-ride-ref">
-                                Ride&nbsp;<code class="sk-code">#@rideId</code>
-                            </p>
-                        }
-                        @if (isEdit && !string.IsNullOrEmpty(Model.TicketReference))
-                        {
-                            <p class="sk-complaint-ticket">
-                                <i class="bi bi-ticket-perforated-fill me-1"></i>@Model.TicketReference
-                            </p>
-                        }
-                    </div>
-                </div>
-
-                @* ── Mode switcher (only for new complaints) ──*@
-                @if (!isEdit)
+                @* ══════════════════════════════════════════════════
+                   BLOCKED STATE — cancelled rides cannot be complained
+                   ══════════════════════════════════════════════════ *@
+                @if (isCancelled && !isEdit)
                 {
-                    <div class="sk-mode-tabs mb-4">
-                        <a asp-controller="RideHistory"
-                           asp-action="FileComplaint"
-                           asp-route-rideId="@ViewBag.RideId"
-                           asp-route-category="@((int)ComplaintCategory.DriverBehavior)"
-                           class="sk-mode-tab @(!isLostItem ? "active" : "")">
-                            <i class="bi bi-flag-fill"></i> File Complaint
-                        </a>
-                        <a asp-controller="RideHistory"
-                           asp-action="FileComplaint"
-                           asp-route-rideId="@ViewBag.RideId"
-                           asp-route-category="@((int)ComplaintCategory.LostItem)"
-                           class="sk-mode-tab @(isLostItem ? "active" : "")">
-                            <i class="bi bi-bag-x-fill"></i> Lost Item
+                    <div class="cf-blocked">
+                        <div class="cf-blocked-icon">
+                            <i class="bi bi-slash-circle"></i>
+                        </div>
+                        <h2>Complaints not available</h2>
+                        <p>
+                            Complaints can only be filed for <strong>completed rides</strong>.
+                            This ride was cancelled, so there's nothing to report.
+                        </p>
+                        <a asp-controller="RideHistory" asp-action="Index"
+                           class="btn btn-sk-outline">
+                            <i class="bi bi-arrow-left me-1"></i> Back to Ride History
                         </a>
                     </div>
                 }
+                else
+                {
+                    @* ── Header ── *@
+                    <div class="cf-header">
+                        <div class="cf-hero">
+                            <div class="cf-hero-icon @(isLostItem ? "icon-amber" : "icon-red")">
+                                <i class="bi @(isLostItem ? "bi-bag-x-fill" : "bi-flag-fill")"></i>
+                            </div>
+                            <div>
+                                <h1>@pageTitle</h1>
+                                <div class="cf-hero-meta">
+                                    @if (ViewBag.RideId is int rideId)
+                                    {
+                                        <span class="cf-ride-ref">
+                                            Ride <code>#@rideId</code>
+                                        </span>
+                                    }
+                                    @if (isEdit && !string.IsNullOrEmpty(Model.TicketReference))
+                                    {
+                                        <span class="cf-ticket-ref">
+                                            <i class="bi bi-ticket-perforated-fill"></i>
+                                            @Model.TicketReference
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
 
-                @* ── Validation summary ──*@
-                <div asp-validation-summary="ModelOnly" class="sk-alert sk-alert-danger mb-4"></div>
-
-                @* ── Form card ──*@
-                <div class="sk-card mb-4">
-                    <div class="sk-card-header @(isLostItem ? "amber" : "navy")">
-                        <i class="bi @(isLostItem ? "bi-bag-x" : "bi-flag")"></i>
-                        @(isLostItem ? "Lost Item Details" : "Complaint Details")
-                        @if (isEdit)
+                        @* ── Mode tabs (new complaints only) ── *@
+                        @if (!isEdit)
                         {
-                            <span class="sk-edit-badge ms-auto">Editing</span>
+                            <div class="cf-tabs">
+                                <a asp-controller="RideHistory"
+                                   asp-action="FileComplaint"
+                                   asp-route-rideId="@ViewBag.RideId"
+                                   asp-route-category="@((int)ComplaintCategory.DriverBehavior)"
+                                   class="cf-tab @(!isLostItem ? "active" : "")">
+                                    <i class="bi bi-flag-fill"></i> File Complaint
+                                </a>
+                                <a asp-controller="RideHistory"
+                                   asp-action="FileComplaint"
+                                   asp-route-rideId="@ViewBag.RideId"
+                                   asp-route-category="@((int)ComplaintCategory.LostItem)"
+                                   class="cf-tab @(isLostItem ? "active" : "")">
+                                    <i class="bi bi-bag-x-fill"></i> Lost Item
+                                </a>
+                            </div>
                         }
                     </div>
-                    <div class="sk-card-body">
 
-                        @* ▼ ACTION FIXED: routes to EditComplaint when editing, FileComplaint when new ▼*@
+                    @* ── Validation summary ── *@
+                    <div asp-validation-summary="ModelOnly" class="cf-validation-summary"></div>
+
+                    @* ── Form card ── *@
+                    <div class="cf-card">
+
+                        <div class="cf-card-stripe @(isLostItem ? "stripe-amber" : "stripe-red")"></div>
+
                         <form asp-controller="RideHistory" asp-action="@formAction" method="post">
                             @Html.AntiForgeryToken()
-
-                            @* Hidden fields*@
                             <input type="hidden" asp-for="Id" />
                             <input type="hidden" asp-for="TripId" />
 
-                            @* Category*@
-                            <div class="sk-field-group">
-                                <label asp-for="Category" class="sk-field-label">Category</label>
-                                @if (isLostItem)
+                            <div class="cf-card-inner">
+
+                                @* ── Category ── *@
+                                <div class="cf-field">
+                                    <label asp-for="Category" class="cf-label">Category</label>
+                                    @if (isLostItem)
+                                    {
+                                        <input type="hidden" asp-for="Category" />
+                                        <div class="cf-readonly">
+                                            <i class="bi bi-bag-x-fill" style="color:var(--sk-amber-dim)"></i>
+                                            Lost Item
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="cf-select-wrap cf-input-wrap">
+                                            <i class="bi bi-tag cf-input-icon"></i>
+                                            <select asp-for="Category"
+                                                    asp-items="filteredCategories"
+                                                    class="cf-input with-icon"></select>
+                                            <i class="bi bi-chevron-down cf-select-arrow"></i>
+                                        </div>
+                                    }
+                                    <span asp-validation-for="Category" class="cf-field-error"></span>
+                                </div>
+
+                                @* ── Priority (complaints only) ── *@
+                                @if (!isLostItem)
                                 {
-                                    <input type="hidden" asp-for="Category" />
-                                    <div class="sk-field-readonly">
-                                        <i class="bi bi-bag-x-fill me-2 opacity-50"></i>
-                                        Lost Item
+                                    <div class="cf-field">
+                                        <span class="cf-label">Priority</span>
+                                        <div class="cf-priority-grid" id="priorityPicker">
+                                            @foreach (var p in Enum.GetValues<ComplaintPriority>())
+                                            {
+                                                string pClass = p switch {
+                                                    ComplaintPriority.Low      => "pri-low",
+                                                    ComplaintPriority.Medium   => "pri-medium",
+                                                    ComplaintPriority.High     => "pri-high",
+                                                    ComplaintPriority.Critical => "pri-critical",
+                                                    _                          => "pri-medium"
+                                                };
+                                                <label class="cf-pri-btn @pClass @(Model.Priority == p ? "selected" : "")">
+                                                    <input type="radio" name="Priority" value="@((int)p)"
+                                                           @(Model.Priority == p ? "checked=\"checked\"" : "") />
+                                                    <span class="pri-dot"></span>
+                                                    @p
+                                                </label>
+                                            }
+                                        </div>
+                                        <span asp-validation-for="Priority" class="cf-field-error"></span>
                                     </div>
                                 }
                                 else
                                 {
-                                    <div class="sk-select-wrap">
-                                        <select asp-for="Category"
-                                                asp-items="filteredCategories"
-                                                class="sk-field-input"></select>
-                                        <i class="bi bi-chevron-down sk-select-arrow"></i>
+                                    <input type="hidden" asp-for="Priority" />
+                                }
+
+                                @* ── Subject ── *@
+                                <div class="cf-field">
+                                    <label asp-for="Subject" class="cf-label">
+                                        @(isLostItem ? "Item description" : "Subject")
+                                        <span class="cf-label-req">*</span>
+                                    </label>
+                                    <div class="cf-input-wrap">
+                                        <i class="bi @(isLostItem ? "bi-bag" : "bi-pencil") cf-input-icon"></i>
+                                        <input asp-for="Subject"
+                                               class="cf-input with-icon"
+                                               placeholder="@(isLostItem
+                                                   ? "e.g. Black backpack with laptop inside"
+                                                   : "e.g. Driver was rude and drove aggressively")" />
+                                    </div>
+                                    <span asp-validation-for="Subject" class="cf-field-error"></span>
+                                </div>
+
+                                @* ── Description ── *@
+                                <div class="cf-field">
+                                    <label asp-for="Description" class="cf-label">
+                                        @(isLostItem ? "Where / when you last had it" : "Full description")
+                                        <span class="cf-label-req">*</span>
+                                        <span class="cf-label-hint"><span id="charCount">0</span> / 2000</span>
+                                    </label>
+                                    <div class="cf-input-wrap">
+                                        <textarea asp-for="Description"
+                                                  class="cf-input"
+                                                  rows="6"
+                                                  maxlength="2000"
+                                                  id="descriptionField"
+                                                  placeholder="@(isLostItem
+                                                      ? "Describe the item, the approximate time you noticed it missing, and any details that may help us locate it…"
+                                                      : "Describe the incident in detail so our team can investigate…")"></textarea>
+                                    </div>
+                                    <span asp-validation-for="Description" class="cf-field-error"></span>
+                                </div>
+
+                                @* ── Info banner ── *@
+                                @if (isLostItem)
+                                {
+                                    <div class="cf-banner warning">
+                                        <i class="bi bi-info-circle-fill"></i>
+                                        <span>We'll contact you and the driver. Check your registered email for updates.</span>
                                     </div>
                                 }
-                                <span asp-validation-for="Category" class="sk-field-error"></span>
-                            </div>
-
-                            @* Priority (complaints only)*@
-                            @if (!isLostItem)
-                            {
-                                <div class="sk-field-group">
-                                    <label class="sk-field-label">Priority</label>
-                                    <div class="sk-priority-picker" id="priorityPicker">
-                                        @foreach (var p in Enum.GetValues<ComplaintPriority>())
-                                        {
-                                            string pClass = p switch {
-                                                ComplaintPriority.Low      => "pri-low",
-                                                ComplaintPriority.Medium   => "pri-medium",
-                                                ComplaintPriority.High     => "pri-high",
-                                                ComplaintPriority.Critical => "pri-critical",
-                                                _                          => "pri-medium"
-                                            };
-                                            <label class="sk-pri-option @pClass @(Model.Priority == p ? "selected" : "")">
-                                                <input type="radio" name="Priority" value="@((int)p)"
-                                                       @(Model.Priority == p ? "checked=\"checked\"" : "") />
-                                                @p
-                                            </label>
-                                        }
+                                else
+                                {
+                                    <div class="cf-banner info">
+                                        <i class="bi bi-info-circle-fill"></i>
+                                        <span>Our support team reviews complaints within 24 hours and assigns them to an agent.</span>
                                     </div>
-                                    <span asp-validation-for="Priority" class="sk-field-error"></span>
-                                </div>
-                            }
-                            else
-                            {
-                                <input type="hidden" asp-for="Priority" />
-                            }
+                                }
 
-                            @* Subject*@
-                            <div class="sk-field-group">
-                                <label asp-for="Subject" class="sk-field-label">
-                                    @(isLostItem ? "Item Description" : "Subject")
-                                    <span class="sk-field-required">*</span>
-                                </label>
-                                <input asp-for="Subject"
-                                       class="sk-field-input"
-                                       placeholder="@(isLostItem
-                                           ? "e.g. Black backpack with laptop inside"
-                                           : "e.g. Driver was rude and drove aggressively")" />
-                                <span asp-validation-for="Subject" class="sk-field-error"></span>
                             </div>
 
-                            @* Description*@
-                            <div class="sk-field-group">
-                                <label asp-for="Description" class="sk-field-label">
-                                    @(isLostItem ? "Where / when you last had it" : "Full Description")
-                                    <span class="sk-field-required">*</span>
-                                </label>
-                                <div class="sk-textarea-wrap">
-                                    <textarea asp-for="Description"
-                                              class="sk-field-input sk-field-textarea"
-                                              rows="5"
-                                              maxlength="2000"
-                                              id="descriptionField"
-                                              placeholder="@(isLostItem
-                                                  ? "Describe the item, approximate time you noticed it missing, and any other details that may help us locate it..."
-                                                  : "Please describe the incident in detail so our team can investigate...")"></textarea>
-                                    <div class="sk-char-counter">
-                                        <span id="charCount">0</span> / 2000
-                                    </div>
-                                </div>
-                                <span asp-validation-for="Description" class="sk-field-error"></span>
-                            </div>
-
-                            @* Info banner*@
-                            @if (isLostItem)
-                            {
-                                <div class="sk-alert sk-alert-warning">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                    <span>We will contact you and the driver. Check your registered email for updates.</span>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="sk-alert sk-alert-info">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                    <span>Our support team reviews complaints within 24 hours and assigns them to an agent.</span>
-                                </div>
-                            }
-
-                            <hr class="divider" />
-
-                            @* Actions*@
-                            <div class="d-flex justify-content-end gap-2">
+                            @* ── Footer actions ── *@
+                            <div class="cf-footer">
                                 <a asp-controller="RideHistory" asp-action="Index"
                                    class="btn btn-sk-outline">Cancel</a>
                                 <button type="submit"
-                                        class="btn sk-submit-btn @(isLostItem ? "sk-submit-amber" : "sk-submit-red")">
+                                        class="btn @(isLostItem ? "btn-sk-primary" : "btn-sk-danger") sk-submit-btn">
                                     <i class="bi @(isEdit ? "bi-check-lg" : (isLostItem ? "bi-send-check" : "bi-send"))"></i>
                                     @submitLabel
                                 </button>
@@ -223,7 +666,7 @@
 
                         </form>
                     </div>
-                </div>
+                }
 
             </div>
         </div>
@@ -236,13 +679,14 @@
         document.addEventListener('DOMContentLoaded', function () {
 
             // ── Character counter ──────────────────────────────────
-            var ta = document.getElementById('descriptionField');
+            var ta      = document.getElementById('descriptionField');
             var counter = document.getElementById('charCount');
             if (ta && counter) {
                 function updateCount() {
                     var len = ta.value.length;
                     counter.textContent = len;
-                    counter.style.color = len > 1800 ? '#EF4444' : '';
+                    counter.style.color = len > 1800 ? 'var(--sk-red)' : '';
+                    counter.parentElement.classList.toggle('near-limit', len > 1800);
                 }
                 ta.addEventListener('input', updateCount);
                 updateCount();
@@ -251,7 +695,7 @@
             // ── Priority pills ─────────────────────────────────────
             var picker = document.getElementById('priorityPicker');
             if (picker) {
-                var labels = picker.querySelectorAll('.sk-pri-option');
+                var labels = picker.querySelectorAll('.cf-pri-btn');
                 var radios = picker.querySelectorAll('input[type="radio"]');
 
                 function syncPills() {
@@ -261,11 +705,7 @@
                     });
                 }
 
-                // Seed on load — the server already rendered checked="checked"
-                // on the right radio, so this correctly highlights it
-                syncPills();
-
-                // Update on every click
+                syncPills(); // seed from server-rendered state
                 radios.forEach(function (r) {
                     r.addEventListener('change', syncPills);
                 });

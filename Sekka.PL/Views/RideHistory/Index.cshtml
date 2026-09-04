@@ -184,6 +184,50 @@
         .sk-ride-card.has-open     { border-left-color: #6366F1; }
         .sk-ride-card.has-escalated{ border-left-color: #F59E0B; }
 
+        /* ── Filter bar ── */
+        .sk-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+            margin-bottom: 1rem;
+        }
+        .sk-filter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .42rem .9rem;
+            border-radius: 50px;
+            font-size: .8rem;
+            font-weight: 600;
+            font-family: var(--font-display);
+            border: 1.5px solid var(--sk-border);
+            background: var(--sk-surface);
+            color: var(--sk-text-muted);
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .sk-filter-btn:hover {
+            border-color: var(--sk-border-2);
+            color: var(--sk-navy);
+            background: var(--sk-surface-2);
+        }
+        .sk-filter-btn.active {
+            background: var(--sk-navy);
+            border-color: var(--sk-navy);
+            color: #fff;
+            box-shadow: var(--sk-shadow-sm);
+        }
+        .sk-filter-btn .filter-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+        .sk-filter-btn.active .filter-dot { opacity: .75; }
+
+        /* hidden ride cards */
+        .col-12.ride-hidden { display: none; }
+
         /* history stat strip */
         .sk-history-header {
             background: var(--sk-navy);
@@ -300,7 +344,24 @@
             </div>
         </div>
 
-        <div class="row g-3">
+        @* ── Filter bar ── *@
+        <div class="sk-filter-bar">
+            <button class="sk-filter-btn active" onclick="filterRides('all', this)">
+                <i class="bi bi-grid-fill"></i> All
+            </button>
+            <button class="sk-filter-btn" onclick="filterRides('completed', this)">
+                <span class="filter-dot" style="background:var(--sk-green)"></span>
+                Completed
+                <span style="font-weight:500;opacity:.65">@totalRides</span>
+            </button>
+            <button class="sk-filter-btn" onclick="filterRides('cancelled', this)">
+                <span class="filter-dot" style="background:var(--sk-red)"></span>
+                Cancelled
+                <span style="font-weight:500;opacity:.65">@cancelledRides</span>
+            </button>
+        </div>
+
+        <div class="row g-3" id="ridesGrid">
             @foreach (var ride in completedRides)
             {
                 var badgeCss = ride.Status switch
@@ -313,7 +374,7 @@
                     _                    => "sk-badge-requested"
                 };
 
-                var canReport = ride.Status == RideStatus.Completed || ride.Status == RideStatus.Cancelled;
+                var canReport = ride.Status == RideStatus.Completed;
                 var canRate   = ride.Status == RideStatus.Completed && ride.DriverId.HasValue && ride.Rating is null;
 
                 string? driverName = ride.Driver?.User?.FullName;
@@ -340,7 +401,7 @@
                 string cardAccent = hasEscalated ? "has-escalated" : hasResolved ? "has-resolved" : hasOpenAny ? "has-open" : "";
                 bool hasAnyComplaint = hasGeneralComplaint || hasLostItemComplaint;
 
-                <div class="col-12">
+                <div class="col-12" data-status="@ride.Status.ToString().ToLower()">
                     <div class="sk-card sk-ride-card @cardAccent">
 
                         @* ─── Card body ─── *@
@@ -849,6 +910,24 @@
 
 @section Scripts {
     <script>
+        /* ── Ride filter ── */
+        function filterRides(status, btn) {
+            // Update active button
+            document.querySelectorAll('.sk-filter-btn').forEach(function (b) {
+                b.classList.remove('active');
+            });
+            btn.classList.add('active');
+
+            // Show / hide ride cards
+            document.querySelectorAll('#ridesGrid .col-12[data-status]').forEach(function (card) {
+                if (status === 'all' || card.dataset.status === status) {
+                    card.classList.remove('ride-hidden');
+                } else {
+                    card.classList.add('ride-hidden');
+                }
+            });
+        }
+
         /* ── Drawer toggle ── */
         function toggleDrawer(drawerId, btn) {
             const drawer = document.getElementById(drawerId);
