@@ -185,6 +185,10 @@ function updatePassengerActiveRide(data) {
                 <p class="mb-1">
                     <i class="bi bi-telephone-fill text-primary"></i> Phone: ${data.driverPhone}
                 </p>
+              <p class="mb-1">
+                    <i class="bi bi-star-fill text-warning"></i>
+                    Rating: <strong>${data.driverRate}</strong>
+                </p>
                 <p class="mb-0">
                     <i class="bi bi-car-front-fill text-danger"></i> Car: <strong>${data.carColor} ${data.carModel}</strong>
                     <br />

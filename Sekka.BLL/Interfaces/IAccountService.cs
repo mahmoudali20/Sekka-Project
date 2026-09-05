@@ -29,7 +29,7 @@ namespace Sekka.BLL.Interfaces
         Task<Result> UpdateAsync(ApplicationUser user);
 
         Task<Result> SignInAsync(ApplicationUser user, bool isPersistent = false);
-        Task<Result> SignOutAsync();
+        Task<Result> SignOutAsync(string userId);
 
         Task<Result<bool>> IsInRoleAsync(ApplicationUser user, string role);
         Task<Result> DeleteUserAsync(ApplicationUser user);

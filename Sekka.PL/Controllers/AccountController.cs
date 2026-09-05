@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Sekka.BLL.Interfaces;
 using Sekka.BLL.ViewModels.AccountVM;
+using System.Security.Claims;
 
 namespace Sekka.PL.Controllers
 {
@@ -44,6 +45,10 @@ namespace Sekka.PL.Controllers
             return View();
         }
 
+
+
+
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginVM model)
@@ -80,16 +85,20 @@ namespace Sekka.PL.Controllers
             return RedirectToAction("Index", "Home");
         }
 
-
         public async Task<IActionResult> Logout()
         {
-            var result = await _accountService.SignOutAsync();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (!result.success)
-                TempData["Error"] = result.error;
+            if (userId != null)
+            {
+                var result = await _accountService.SignOutAsync(userId);
+
+                if (!result.success)
+                    TempData["Error"] = result.error;
+            }
+
             return RedirectToAction("Login", "Account");
         }
-
 
         [HttpPost]
         [ValidateAntiForgeryToken]

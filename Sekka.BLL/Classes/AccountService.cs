@@ -5,6 +5,7 @@ using Sekka.BLL.Common;
 using Sekka.BLL.Interfaces;
 using Sekka.BLL.ViewModels.AccountVM;
 using Sekka.DAL.Models;
+using Sekka.DAL.Repositories.Interfaces;
 using System.Security.Claims;
 
 namespace Sekka.BLL.Classes
@@ -14,11 +15,13 @@ namespace Sekka.BLL.Classes
 
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public AccountService(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+        public AccountService(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IUnitOfWork unitOfWork)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _unitOfWork = unitOfWork;
         }
 
 
@@ -145,10 +148,29 @@ namespace Sekka.BLL.Classes
         public async Task<Result> SignInAsync(ApplicationUser user, bool isPersistent = false)
         {
             await _signInManager.SignInAsync(user, isPersistent);
+            var isDriver = await _userManager.IsInRoleAsync(user, "Driver");
+
+            if (isDriver)
+            {
+                var driver = await _unitOfWork.GetRepo<Driver, int>().FirstOrDefaultAsync(d => d.UserId == user.Id, tracking: true);
+                if (driver != null)
+                {
+                    driver.IsAvailable = true;
+                    _unitOfWork.GetRepo<Driver, int>().Update(driver);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+            }
             return Result.OK();
         }
-        public async Task<Result> SignOutAsync()
+        public async Task<Result> SignOutAsync(string userId)
         {
+            var driver = await _unitOfWork.GetRepo<Driver, int>().FirstOrDefaultAsync(d => d.UserId == userId, tracking: true);
+            if (driver != null)
+            {
+                driver.IsAvailable = false;
+                _unitOfWork.GetRepo<Driver, int>().Update(driver);
+                await _unitOfWork.SaveChangesAsync();
+            }
             await _signInManager.SignOutAsync();
             return Result.OK();
         }
@@ -232,6 +254,7 @@ namespace Sekka.BLL.Classes
 
             }
 
+            //AspNetUserLogins
             var addLoginResult = await _userManager.AddLoginAsync(user, info);
 
             if (!addLoginResult.Succeeded)

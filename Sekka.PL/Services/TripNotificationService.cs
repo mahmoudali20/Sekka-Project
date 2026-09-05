@@ -39,6 +39,7 @@ namespace Sekka.PL.Services
                 rideId = ride.RideID,
                 driverName = driver.User?.FullName ?? "Unknown",
                 driverPhone = driver.User?.PhoneNumber ?? "N/A",
+                driverRate = driver.RatingAverage,
                 carColor = driver.Car?.Color ?? "",
                 carModel = driver.Car?.Model ?? "Unknown Car",
                 carPlate = driver.Car?.PlateNumber ?? "N/A",
