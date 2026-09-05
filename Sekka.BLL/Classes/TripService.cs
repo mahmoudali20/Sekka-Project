@@ -263,7 +263,7 @@ namespace Sekka.BLL.Classes
 				{
 					ride.Driver = drivers.FirstOrDefault(d => d.Id == ride.DriverId.Value);
 
-					if (ride.Driver != null)
+                    if (ride.Driver != null)
 					{
 						ride.Driver.Car = cars.FirstOrDefault(c => c.Id == ride.Driver.CarId);
 						ride.Driver.User = users.FirstOrDefault(u => u.Id == ride.Driver.UserId);
@@ -328,32 +328,71 @@ namespace Sekka.BLL.Classes
 			return ride;
 		}
 
-		public async Task<Result> RateDriverAsync(RateDriverVM model, string passengerId, CancellationToken ct = default)
-		{
-			var ride = await _unitOfWork.GetRepo<Ride, int>().FirstOrDefaultAsync(r => r.RideID == model.RideId, true, ct);
+        public async Task<Result> RateDriverAsync(RateDriverVM model,string passengerId,CancellationToken ct = default)
+        {
+            var ride = await _unitOfWork
+                .GetRepo<Ride, int>()
+                .FirstOrDefaultAsync(
+                    r => r.RideID == model.RideId,
+                    true,
+                    ct);
 
-			if (ride == null) return Result.Fail("Ride not found.");
-			if (ride.PassengerId != passengerId) return Result.Fail("Unauthorized to rate this ride.", ResultKind.Forbidden);
-			if (ride.Status != RideStatus.Completed) return Result.Fail("You can only rate completed rides.");
-			if (!ride.DriverId.HasValue) return Result.Fail("No driver assigned to this ride.");
+            if (ride == null)
+                return Result.Fail("Ride not found.");
 
-			bool alreadyRated = await _unitOfWork.GetRepo<Rating, int>().AnyAsync(r => r.RideId == model.RideId, ct);
-			if (alreadyRated) return Result.Fail("You have already rated this ride.");
+            if (ride.PassengerId != passengerId)
+                return Result.Fail(
+                    "Unauthorized to rate this ride.",
+                    ResultKind.Forbidden);
 
-			var rating = new Rating
-			{
-				RideId = model.RideId,
-				PassengerId = passengerId,
-				DriverId = ride.DriverId.Value,
-				Score = model.Score,
-				Comment = model.Comment,
-				CreatedAt = DateTime.UtcNow
-			};
+            if (ride.Status != RideStatus.Completed)
+                return Result.Fail("You can only rate completed rides.");
 
-			_unitOfWork.GetRepo<Rating, int>().AddAsync(rating);
-			var saved = await _unitOfWork.SaveChangesAsync();
+            if (!ride.DriverId.HasValue)
+                return Result.Fail("No driver assigned to this ride.");
 
-			return saved > 0 ? Result.OK() : Result.Fail("Failed to submit rating.");
-		}
-	}
+            bool alreadyRated = await _unitOfWork
+                .GetRepo<Rating, int>()
+                .AnyAsync(r => r.RideId == model.RideId, ct);
+
+            if (alreadyRated)
+                return Result.Fail("You have already rated this ride.");
+
+            var rating = new Rating
+            {
+                RideId = model.RideId,
+                PassengerId = passengerId,
+                DriverId = ride.DriverId.Value,
+                Score = model.Score,
+                Comment = model.Comment,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _unitOfWork
+                .GetRepo<Rating, int>()
+                .AddAsync(rating);
+
+            var driver = await _unitOfWork
+                .GetRepo<Driver, int>()
+                .GetByIdAsync(ride.DriverId.Value, ct);
+
+            if (driver == null)
+                return Result.Fail("Driver not found.");
+
+            var average = await _unitOfWork
+                .GetRepo<Rating, int>()
+                .AverageAsync(
+                    r => r.Score,
+                    r => r.DriverId == ride.DriverId.Value,
+                    ct);
+
+            driver.RatingAverage = (decimal)average;
+
+            var saved = await _unitOfWork.SaveChangesAsync();
+
+            return saved > 0
+                ? Result.OK()
+                : Result.Fail("Failed to submit rating.");
+        }
+    }
 }

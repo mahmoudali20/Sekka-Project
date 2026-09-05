@@ -51,5 +51,17 @@ namespace Sekka.DAL.Repositories.Classes
             IQueryable<T> query = tracking ? _dbContext.Set<T>() : _dbContext.Set<T>().AsNoTracking();
             return await query.FirstOrDefaultAsync(predicate, ct);
         }
+
+        public async Task<double> AverageAsync(Expression<Func<T, int>> selector,Expression<Func<T, bool>>? predicate = null,CancellationToken ct = default)
+        {
+            IQueryable<T> query = _dbContext.Set<T>();
+
+            if (predicate != null)
+                query = query.Where(predicate);
+
+            return await query.AnyAsync(ct)
+                ? await query.AverageAsync(selector, ct)
+                : 0;
+        }
     }
 }

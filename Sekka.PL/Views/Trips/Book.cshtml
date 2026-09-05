@@ -130,7 +130,9 @@
 </div>
 
 @section Scripts {
-    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         var map = L.map('map').setView([30.0444, 31.2357], 12);
@@ -140,26 +142,32 @@
 
         var pickupMarker, dropoffMarker, routeLine;
 
+        var redIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        });
+
         function locateUser() {
             if (!navigator.geolocation) return;
-            document.getElementById('PickupLocation').value = 'Locating…';
-            navigator.geolocation.getCurrentPosition(function (pos) {
+            document.getElementById('PickupLocation').value = 'Locating with high accuracy…';
+            navigator.geolocation.getCurrentPosition(function(pos) {
                 setPickup(pos.coords.latitude, pos.coords.longitude);
-                map.setView([pos.coords.latitude, pos.coords.longitude], 15);
-            }, function () {
+                map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+            }, function(error) {
                 document.getElementById('PickupLocation').value = '';
-                alert('Please allow location access.');
-            });
+                alert('Please allow location access, or select your location manually on the map.');
+            }, { enableHighAccuracy: true });
         }
 
         locateUser();
 
         function setPickup(lat, lng) {
             if (pickupMarker) map.removeLayer(pickupMarker);
-            pickupMarker = L.marker([lat, lng], { draggable: true })
-                .addTo(map).bindPopup('Pickup').openPopup();
+            pickupMarker = L.marker([lat, lng], { draggable: true }).addTo(map).bindPopup('Pickup').openPopup();
             updatePickupData(lat, lng);
-            pickupMarker.on('dragend', function () {
+
+            pickupMarker.on('dragend', function() {
                 var p = pickupMarker.getLatLng();
                 updatePickupData(p.lat, p.lng);
             });
@@ -168,10 +176,47 @@
         function updatePickupData(lat, lng) {
             document.getElementById('PickupLat').value = lat;
             document.getElementById('PickupLng').value = lng;
+            document.getElementById('PickupLocation').value = 'Loading address...';
+
             fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng)
                 .then(r => r.json()).then(d => {
-                    document.getElementById('PickupLocation').value =
-                        d.display_name.split(',').slice(0, 3).join(',');
+                    document.getElementById('PickupLocation').value = d.display_name.split(',').slice(0, 3).join(',');
+                    calculateFare();
+                });
+        }
+
+
+        map.on('click', function(e) {
+            setDropoff(e.latlng.lat, e.latlng.lng);
+        });
+
+        function setDropoff(lat, lng) {
+            if (dropoffMarker) {
+                dropoffMarker.setLatLng([lat, lng]);
+                dropoffMarker.openPopup();
+            } else {
+                dropoffMarker = L.marker([lat, lng], { icon: redIcon, draggable: true }).addTo(map).bindPopup('Destination').openPopup();
+
+                dropoffMarker.on('dragend', function() {
+                    var p = dropoffMarker.getLatLng();
+                    updateDropoffData(p.lat, p.lng);
+                });
+            }
+            updateDropoffData(lat, lng);
+        }
+
+        function updateDropoffData(lat, lng) {
+            document.getElementById('DropoffLat').value = lat;
+            document.getElementById('DropoffLng').value = lng;
+            document.getElementById('DropoffLocation').value = 'Loading address...';
+
+            fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng)
+                .then(r => r.json()).then(d => {
+                    if (d.display_name) {
+                        document.getElementById('DropoffLocation').value = d.display_name.split(',').slice(0, 3).join(',');
+                    } else {
+                        document.getElementById('DropoffLocation').value = 'Selected on map';
+                    }
                     calculateFare();
                 });
         }
@@ -181,45 +226,60 @@
             if (!q) return;
             fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q + ', Egypt') + '&limit=1')
                 .then(r => r.json()).then(data => {
-                    if (!data.length) { alert('Location not found. Try a different name.'); return; }
-                    var lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
-                    if (dropoffMarker) map.removeLayer(dropoffMarker);
-                    var redIcon = new L.Icon({
-                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                        iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34], shadowSize: [41,41]
-                    });
-                    dropoffMarker = L.marker([lat, lng], { icon: redIcon }).addTo(map).bindPopup('Destination').openPopup();
-                    document.getElementById('DropoffLat').value = lat;
-                    document.getElementById('DropoffLng').value = lng;
-                    document.getElementById('DropoffLocation').value =
-                        data[0].display_name.split(',').slice(0, 3).join(',');
-                    if (pickupMarker) {
-                        var group = new L.featureGroup([pickupMarker, dropoffMarker]);
-                        map.fitBounds(group.getBounds().pad(0.15));
-                    }
-                    calculateFare();
+                    if (!data.length) { alert('Location not found. Try dropping a pin on the map instead.'); return; }
+                    setDropoff(parseFloat(data[0].lat), parseFloat(data[0].lon));
                 });
         }
 
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            var R = 6371;
+            var dLat = (lat2 - lat1) * (Math.PI / 180);
+            var dLon = (lon2 - lon1) * (Math.PI / 180);
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
         function calculateFare() {
-            var pLat = document.getElementById('PickupLat').value;
-            var pLng = document.getElementById('PickupLng').value;
-            var dLat = document.getElementById('DropoffLat').value;
-            var dLng = document.getElementById('DropoffLng').value;
+            var pLat = parseFloat(document.getElementById('PickupLat').value);
+            var pLng = parseFloat(document.getElementById('PickupLng').value);
+            var dLat = parseFloat(document.getElementById('DropoffLat').value);
+            var dLng = parseFloat(document.getElementById('DropoffLng').value);
+
             if (!pLat || !pLng || !dLat || !dLng) return;
 
-            fetch('https://router.project-osrm.org/route/v1/driving/' + pLng + ',' + pLat + ';' + dLng + ',' + dLat + '?overview=false')
-                .then(r => r.json()).then(data => {
+            var straightDistance = getDistanceFromLatLonInKm(pLat, pLng, dLat, dLng);
+            var realisticKm = (straightDistance * 1.15).toFixed(2);
+
+            document.getElementById('DistanceInKm').value = realisticKm;
+            document.getElementById('distanceText').textContent = realisticKm + ' km';
+
+            var fare = Math.ceil(15 + realisticKm * 8);
+
+            document.getElementById('EstimatedFare').value = fare;
+            document.getElementById('fareDisplay').textContent = fare;
+            document.getElementById('submitBtn').disabled = false;
+
+            var url = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
                     if (!data.routes || !data.routes.length) return;
-                    var km = (data.routes[0].distance / 1000).toFixed(2);
-                    document.getElementById('DistanceInKm').value = km;
-                    document.getElementById('distanceText').textContent = km + ' km';
-                    var fare = Math.ceil(15 + km * 8);
-                    document.getElementById('EstimatedFare').value = fare;
-                    document.getElementById('fareDisplay').textContent = fare;
-                    document.getElementById('submitBtn').disabled = false;
-                });
+
+                    if (routeLine) {
+                        map.removeLayer(routeLine);
+                    }
+
+                    var coords = data.routes[0].geometry.coordinates;
+                    var latLngs = coords.map(c => [c[1], c[0]]);
+
+                    routeLine = L.polyline(latLngs, { color: '#0d6efd', weight: 5, opacity: 0.8 }).addTo(map);
+                    map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+                })
+                .catch(e => console.log("Routing Visualizer Error:", e));
         }
     </script>
 }

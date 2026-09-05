@@ -17,5 +17,6 @@ namespace Sekka.DAL.Repositories.Interfaces
         Task<bool> AnyAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default);
 
         Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, bool tracking = false, CancellationToken ct = default);
+        Task<double> AverageAsync(Expression<Func<T, int>> selector,Expression<Func<T, bool>>? predicate = null,CancellationToken ct = default);
     }
 }
